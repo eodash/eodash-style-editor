@@ -106,4 +106,4 @@ export class MyElement extends LitElement {
   }
 }
 
-window.customElements.define('my-element', MyElement)
+window.customElements.define('eodash-style-editor', MyElement)
