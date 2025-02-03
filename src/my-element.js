@@ -7,10 +7,6 @@ import '@eox/layout';
 import '@eox/map';
 import '@eox/jsonform';
 
-import * as monaco from 'monaco-editor';
-import editorStyle from "monaco-editor/min/vs/editor/editor.main.css?inline"
-import jsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
-
 self.MonacoEnvironment = {
   getWorker(_, label) {
     if (label === "json") {
@@ -53,8 +49,6 @@ export class MyElement extends LitElement {
   render() {
     return html`
       <style>
-        ${editorStyle}
-
         #navbar {
           display: flex;
           justify-content: space-between;
@@ -73,7 +67,7 @@ export class MyElement extends LitElement {
           <!--<div id="code-editor" style="height: 100%; width: 100%;"></div>-->
 
           <eox-jsonform
-            .schema='${{"type":"object","properties":{"code":{"type":"string","title":" ","description":"See the <a href='https://github.com/ajaxorg/ace/wiki/Configuring-Ace'>configuration options</a> and <a href='https://github.com/ajaxorg/ace/tree/master/src/theme'>themes</a> that can be passed to <code>options.ace</code>","format":"json","options":{"ace":{"tabSize":2}}}}}}'
+            .schema='${{"type":"object","properties":{"code":{"type":"string","title":" ","description":"","format":"json","options":{"ace":{"tabSize":2,"fontSize": 14}}}}}}'
             .value='${{"code":"{\n  \"hello\": \"world\"\n}"}}'
           ></eox-jsonform>
         </eox-layout-item>
