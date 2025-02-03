@@ -5,6 +5,7 @@ import viteLogo from '/vite.svg'
 
 import '@eox/layout';
 import '@eox/map';
+import '@eox/jsonform';
 
 import * as monaco from 'monaco-editor';
 import editorStyle from "monaco-editor/min/vs/editor/editor.main.css?inline"
@@ -49,63 +50,6 @@ export class MyElement extends LitElement {
     this.editor = null
   }
 
-  firstUpdated() {
-    // Initialize Monaco editor after the first render
-    this._initializeEditor()
-  }
-
-  disconnectedCallback() {
-    // Clean up the editor when the component is removed
-    if (this.editor) {
-      //this.editor.dispose()
-    }
-    super.disconnectedCallback()
-  }
-
-  async _initializeEditor() {
-    const editorElement = this.shadowRoot.querySelector('#code-editor');
-    
-    if (editorElement && !this.editor) {
-      console.log('Creating editor instance ...');
-      this.editor = monaco.editor.create(editorElement, {
-        value: this.editorValue,
-        language: 'json',
-        fontSize: 15,
-        theme: 'vs', // Optional: use dark theme,
-      });
-
-      // Force a layout recalculation after creation
-      requestAnimationFrame(() => {
-        this.editor.layout();
-        // Sometimes needs a second layout call
-        requestAnimationFrame(() => {
-          this.editor.layout();
-        });
-      });
-
-      // Add layout handler for container resizes
-      const resizeObserver = new ResizeObserver(() => {
-        // Get explicit dimensions
-        const bounds = editorElement.getBoundingClientRect();
-        this.editor.layout({
-          width: bounds.width,
-          height: bounds.height
-        });
-      });
-      resizeObserver.observe(editorElement);
-
-      // Optional: Handle editor content changes
-      this.editor.onDidChangeModelContent(() => {
-        this.editorValue = this.editor.getValue();
-        this.dispatchEvent(new CustomEvent('editor-change', {
-          detail: { value: this.editorValue },
-          bubbles: true,
-          composed: true
-        }));
-      });
-    }
-  }
-
   render() {
     return html`
       <style>
@@ -126,7 +70,12 @@ export class MyElement extends LitElement {
         </eox-layout-item>
 
         <eox-layout-item x="0" y="1" w="4" h="11">
-          <div id="code-editor" style="height: 100%; width: 100%;"></div>
+          <!--<div id="code-editor" style="height: 100%; width: 100%;"></div>-->
+
+          <eox-jsonform
+            .schema='${{"type":"object","properties":{"code":{"type":"string","title":" ","description":"See the <a href='https://github.com/ajaxorg/ace/wiki/Configuring-Ace'>configuration options</a> and <a href='https://github.com/ajaxorg/ace/tree/master/src/theme'>themes</a> that can be passed to <code>options.ace</code>","format":"json","options":{"ace":{"tabSize":2}}}}}}'
+            .value='${{"code":"{\n  \"hello\": \"world\"\n}"}}'
+          ></eox-jsonform>
         </eox-layout-item>
 
         <eox-layout-item x="4" y="1" w="8" h="11" style="background: white">

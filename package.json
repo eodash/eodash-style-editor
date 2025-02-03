@@ -9,6 +9,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@eox/jsonform": "^0.14.0",
     "@eox/layercontrol": "^0.29.0",
     "@eox/layout": "^0.3.0",
     "@eox/map": "^1.19.3",
