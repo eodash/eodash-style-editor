@@ -13,11 +13,61 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("./fonts/IBMPlexMono-Regular.ttf") format('ttf');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("./fonts/IBMPlexMono-Italic.ttf") format('ttf');
+  font-weight: 400;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("./fonts/IBMPlexMono-Medium.ttf") format('ttf');
+  font-weight: 500;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("./fonts/IBMPlexMono-MediumItalic.ttf") format('ttf');
+  font-weight: 500;
+  font-style: italic;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("./fonts/IBMPlexMono-Bold.ttf") format('ttf');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "IBM Plex Mono";
+  src: url("./fonts/IBMPlexMono-BoldItalic.ttf") format('ttf');
+  font-weight: 700;
+  font-style: italic;
+}
+
+* {
+  box-sizing: border-box;
+}
+
 body {
   margin: 0;
   padding: 0;
   width: 100vw;
   height: 100vh;
+  
+  /* Disable all scroll behaviour */
+  overflow-x: hidden;
+  overflow-y: hidden;
 }
 
 @media (prefers-color-scheme: light) {
