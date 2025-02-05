@@ -13,8 +13,9 @@
     "@eox/layercontrol": "^0.29.0",
     "@eox/layout": "^0.3.0",
     "@eox/map": "^1.19.3",
+    "@tailwindcss/vite": "^4.0.3",
     "lit": "^3.2.1",
-    "monaco-editor": "0.47.0"
+    "tailwindcss": "^4.0.3"
   },
   "devDependencies": {
     "vite": "^6.0.5"
