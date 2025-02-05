@@ -1,12 +1,211 @@
 import { LitElement, css, html } from "lit"
 
-import "@eox/layout";
-import "@eox/map";
-import "@eox/jsonform";
+import "@eox/layout"
+import "@eox/map"
+import "@eox/layercontrol"
+import "@eox/map/dist/eox-map-advanced-layers-and-sources.js"
+import "@eox/jsonform"
 
-import "./fonts/IBMPlexMono-Regular.ttf";
+import "./fonts/IBMPlexMono-Regular.ttf"
 
-const maxEditorHeight = 276;
+import componentStyle from "./eodash-style-editor.css?inline"
+
+const maxEditorHeight = 276
+
+const jsonFormConfig = {
+  "type":"object",
+  "properties":{
+     "code":{
+        "type":"string",
+        "title":" ",
+        "description":"",
+        "format":"json",
+        "options":{
+           "ace":{
+              "tabSize":2,
+              "fontSize":14,
+              "fontFamily":"'IBM Plex Mono'",
+              "maxPixelHeight":"maxEditorHeight"
+           }
+        }
+     }
+  }
+}
+
+const defaultMapConfig = [
+  {
+    "type": "Vector",
+    "properties": {
+      "id": "FlatGeoBufLayer",
+      "minZoom": 12
+    },
+    "source": {
+      "type": "FlatGeoBuf",
+      "url": "https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb"
+    }
+  },
+  {
+    "type": "Tile",
+    "properties": {
+      "id": "customId"
+    },
+    "source": {
+      "type": "OSM"
+    }
+  }
+];
+
+const secondMapConfig = [
+  {
+    "type": "Group",
+    "properties": {
+      "id": "group2",
+      "title": "Data Layers",
+      "layerControlExpand": true,
+      "description": "# Hello world"
+    },
+    "layers": [
+      {
+        "type": "Tile",
+        "properties": {
+          "id": "WIND",
+          "title": "WIND"
+        },
+        "source": {
+          "type": "TileWMS",
+          "url": "https://services.sentinel-hub.com/ogc/wms/0635c213-17a1-48ee-aef7-9d1731695a54",
+          "params": {
+            "LAYERS": "AWS_VIS_WIND_V_10M"
+          }
+        }
+      },
+      {
+        "type": "Tile",
+        "properties": {
+          "id": "NO2",
+          "title": "NO2"
+        },
+        "source": {
+          "type": "TileWMS",
+          "url": "https://services.sentinel-hub.com/ogc/wms/0635c213-17a1-48ee-aef7-9d1731695a54",
+          "params": {
+            "LAYERS": "AWS_NO2-VISUALISATION"
+          }
+        }
+      },
+      {
+        "type": "Vector",
+        "properties": {
+          "title": "Regions",
+          "id": "regions",
+          "description": "Ecological regions of the earth."
+        },
+        "source": {
+          "type": "Vector",
+          "url": "https://openlayers.org/data/vector/ecoregions.json",
+          "format": "GeoJSON",
+          "attributions": "Regions: @ openlayers.org"
+        }
+      }
+    ]
+  },
+  {
+    "type": "Group",
+    "properties": {
+      "id": "group1",
+      "title": "Background Layers"
+    },
+    "layers": [
+      {
+        "type": "WebGLTile",
+        "properties": {
+          "id": "s2",
+          "layerControlExclusive": true,
+          "title": "s2"
+        },
+        "style": {
+          "variables": {
+            "red": 1,
+            "green": 2,
+            "blue": 3,
+            "redMax": 3000,
+            "greenMax": 3000,
+            "blueMax": 3000
+          },
+          "color": [
+            "array",
+            [
+              "/",
+              [
+                "band",
+                [
+                  "var",
+                  "red"
+                ]
+              ],
+              [
+                "var",
+                "redMax"
+              ]
+            ],
+            [
+              "/",
+              [
+                "band",
+                [
+                  "var",
+                  "green"
+                ]
+              ],
+              [
+                "var",
+                "greenMax"
+              ]
+            ],
+            [
+              "/",
+              [
+                "band",
+                [
+                  "var",
+                  "blue"
+                ]
+              ],
+              [
+                "var",
+                "blueMax"
+              ]
+            ],
+            1
+          ],
+          "gamma": 1.1
+        },
+        "source": {
+          "type": "GeoTIFF",
+          "normalize": false,
+          "sources": [
+            {
+              "url": "https://s2downloads.eox.at/demo/EOxCloudless/2020/rgbnir/s2cloudless2020-16bits_sinlge-file_z0-4.tif"
+            }
+          ]
+        }
+      },
+      {
+        "type": "Tile",
+        "properties": {
+          "id": "osm",
+          "title": "Open Street Map",
+          "layerControlExclusive": true
+        },
+        "visible": false,
+        "opacity": 0.5,
+        "source": {
+          "type": "OSM"
+        }
+      }
+    ]
+  }
+];
 
 /**
  * An instance of the `eodash` style editor for geospatial features on a map.
@@ -41,181 +240,65 @@ export class EodashStyleEditor extends LitElement {
   render() {
     return html`
       <style>
-        :root, eodash-style-editor {
-          width: 100vw;
-          height: 100vh;
-          max-width: 100vw;
-          max-height: 100vh;
-        }
-        #navbar {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          padding: 0 36px;
-        }
-
-        eox-map {
-          width: 100vw;
-          height: 100vh;
-          position: fixed;
-          left: 0;
-          top: 0;
-        }
-
-        .sidebar {
-          position: fixed;
-          left: 0;
-          top: 0;
-          width: 600px;
-          height: 100vh;
-          padding: 20px;
-        }
-
-        .sidebar-items {
-          display: flex;
-          flex-direction: column;
-        }
-
-        .editor-toolbar {
-          position: absolute;
-          left: 16px;
-          top: 0;
-          right: 24px;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          height: 64px;
-        }
-
-        .editor-toolbar span {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          height: 64px;
-        }
-
-        .editor-toolbar span.start {
-          justify-content: flex-start;
-        }
-
-        .editor-toolbar span.end {
-          justify-content: flex-end;
-        }
-
-        .icon-container {
-          width: 36px;
-          height: 36px;
-          background: #0006;
-          border-radius: 6px;
-          margin-right: 16px;
-          display: flex;
-          justify-content: center;
-          align-items: center;
-        }
-
-        .icon-container.blue {
-          background: #509CCF;
-        }
-
-        .icon {
-          height: 24px;
-          width: 24px;
-          /* Position the icon properly */
-          background-position: center;
-          background-repeat: no-repeat;
-        }
-
-        .icon.layer-control {
-          background-image: url("data:image/svg+xml,%3Csvg fill='%23FFF' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctitle%3Elayers%3C/title%3E%3Cpath d='M12,16L19.36,10.27L21,9L12,2L3,9L4.63,10.27M12,18.54L4.62,12.81L3,14.07L12,21.07L21,14.07L19.37,12.8L12,18.54Z' /%3E%3C/svg%3E");
-        }
-
-        .icon.code-editor {
-          background-image: url("data:image/svg+xml,%3Csvg fill='%23FFF' xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Ctitle%3Ecode-braces%3C/title%3E%3Cpath d='M8,3A2,2 0 0,0 6,5V9A2,2 0 0,1 4,11H3V13H4A2,2 0 0,1 6,15V19A2,2 0 0,0 8,21H10V19H8V14A2,2 0 0,0 6,12A2,2 0 0,0 8,10V5H10V3M16,3A2,2 0 0,1 18,5V9A2,2 0 0,0 20,11H21V13H20A2,2 0 0,0 18,15V19A2,2 0 0,1 16,21H14V19H16V14A2,2 0 0,1 18,12A2,2 0 0,1 16,10V5H14V3H16Z' /%3E%3C/svg%3E");
-        }
-
-        .editor-title {
-          font-family: 'IBM Plex Mono';
-          font-weight: 700;
-          font-size: 16px;
-          color: #051E2E;
-        }
-
-        .card {
-          position: relative;
-          display: flex;
-          padding: 20px 20px;
-          border-radius: 12px;
-          width: 560px;
-          min-height: 300px;
-          background: #fffa;
-          box-shadow: 0px 3px 5px 0px rgba(0,0,0,0.17);
-          backdrop-filter: blur(10px);
-          overflow: hidden;
-        }
-
-        eox-jsonform {
-          position: absolute;
-          left: 0;
-          top: 40px;
-          right: 0;
-          height: 300px;
-          max-height: 300px;
-        }
-
-        h1, h2, h3, h4, h5, h6 {
-          margin: 0;
-        }
-
-        .row {
-          margin-bottom: 16px;
-        }
-
-        #geometry-url-input {
-          width: calc(100% - 120px);
-          background: white;
-          border: none;
-          height: 48px;
-          color: #333;
-          border-radius: 12px;
-          font-size: 16px;
-          font-weight: 500;
-          padding-left: 16px;
-        }
+        ${componentStyle}
       </style>
 
       <div class="eodash-style-editor">
         <eox-map
-          .center='${[15,48]}'
-          .layers='${[{"type":"Tile","source":{"type":"OSM"}}]}'
-          .zoom='${7}'
+          id="map"
+          .center='${[16.346,48.182]}'
+          .layers='${defaultMapConfig}'
+          .zoom='${12.5}'
           style="width: 100%; height: 100%;">
         </eox-map>
 
+        <div class="style-editor-input-container">
+          <div class="flex">
+            <input
+              id="geometry-url-input"
+              type="text"
+              placeholder="Paste a link here to load geometry"
+            />
+
+            <a class="load-button flex justify-center items-center text-white font-bold">
+              Import
+            </a>
+          </div>
+        </div>
+
         <div class="sidebar">
           <div class="sidebar-items">
-            <div class="row">
-              <input
-                id="geometry-url-input"
-                type="text"
-                placeholder="Paste a link here to load geometry"
-              />
-            </div>
             <div class="card">
               <div class="editor-toolbar">
                 <span class="start">
-                  <div class="icon-container editor blue">
+                  <div class="icon-container editor">
                     <div class="icon code-editor"></div>
                   </div>
                   <h3 class="editor-title">Untitled Style</h3>
                 </span>
               </div>
               <eox-jsonform
-                .schema='${{"type":"object","properties":{"code":{"type":"string","title":" ","description":"","format":"json","options":{"ace":{"tabSize":2, "fontSize": 14, "fontFamily": "'IBM Plex Mono'", "maxPixelHeight": maxEditorHeight}}}}}}'
+                .schema='${jsonFormConfig}'
                 .value='${{"code":"{\n  \"hello\": \"world\"\n}"}}'
               ></eox-jsonform>
             </div>
 
-            <!--<eox-layercontrol for"eox-map" />-->
+            <div class="card">
+              <div class="editor-toolbar">
+                <span class="start">
+                  <div class="icon-container editor">
+                    <div class="icon layer-control"></div>
+                  </div>
+                  <h3 class="layers-title">Layers</h3>
+                </span>
+              </div>
+              <div style="width: 300px; height: 300px;">
+                <eox-layercontrol
+                  for="eox-map"
+                  style="width: 300px; height: 300px;"
+                ></eox-layercontrol>
+              </div>
+            </div>
           </div>
         </div>
       </div>
