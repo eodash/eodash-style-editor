@@ -10,6 +10,8 @@ import "./fonts/IBMPlexMono-Regular.ttf"
 
 import componentStyle from "./eodash-style-editor.css?inline"
 
+import exampleStyleDef from "./example-style.json?inline"
+
 const maxEditorHeight = 276
 
 const jsonFormConfig = {
@@ -32,180 +34,31 @@ const jsonFormConfig = {
   }
 }
 
-const defaultMapConfig = [
-  {
-    "type": "Vector",
-    "properties": {
-      "id": "FlatGeoBufLayer",
-      "minZoom": 12
-    },
-    "source": {
-      "type": "FlatGeoBuf",
-      "url": "https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb"
-    }
-  },
-  {
-    "type": "Tile",
-    "properties": {
-      "id": "customId"
-    },
-    "source": {
-      "type": "OSM"
-    }
-  }
-];
-
-const secondMapConfig = [
-  {
-    "type": "Group",
-    "properties": {
-      "id": "group2",
-      "title": "Data Layers",
-      "layerControlExpand": true,
-      "description": "# Hello world"
-    },
-    "layers": [
-      {
-        "type": "Tile",
-        "properties": {
-          "id": "WIND",
-          "title": "WIND"
-        },
-        "source": {
-          "type": "TileWMS",
-          "url": "https://services.sentinel-hub.com/ogc/wms/0635c213-17a1-48ee-aef7-9d1731695a54",
-          "params": {
-            "LAYERS": "AWS_VIS_WIND_V_10M"
-          }
-        }
+/* Create a map config for Flat Geo Buf sources */
+function createFgbConfig(url, styleObject) {
+  return [
+    {
+      "type": "Vector",
+      "properties": {
+        "id": "FlatGeoBufLayer",
+        "minZoom": 12
       },
-      {
-        "type": "Tile",
-        "properties": {
-          "id": "NO2",
-          "title": "NO2"
-        },
-        "source": {
-          "type": "TileWMS",
-          "url": "https://services.sentinel-hub.com/ogc/wms/0635c213-17a1-48ee-aef7-9d1731695a54",
-          "params": {
-            "LAYERS": "AWS_NO2-VISUALISATION"
-          }
-        }
-      },
-      {
-        "type": "Vector",
-        "properties": {
-          "title": "Regions",
-          "id": "regions",
-          "description": "Ecological regions of the earth."
-        },
-        "source": {
-          "type": "Vector",
-          "url": "https://openlayers.org/data/vector/ecoregions.json",
-          "format": "GeoJSON",
-          "attributions": "Regions: @ openlayers.org"
-        }
+      "source": {
+        "type": "FlatGeoBuf",
+        "url": "https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb"
       }
-    ]
-  },
-  {
-    "type": "Group",
-    "properties": {
-      "id": "group1",
-      "title": "Background Layers"
     },
-    "layers": [
-      {
-        "type": "WebGLTile",
-        "properties": {
-          "id": "s2",
-          "layerControlExclusive": true,
-          "title": "s2"
-        },
-        "style": {
-          "variables": {
-            "red": 1,
-            "green": 2,
-            "blue": 3,
-            "redMax": 3000,
-            "greenMax": 3000,
-            "blueMax": 3000
-          },
-          "color": [
-            "array",
-            [
-              "/",
-              [
-                "band",
-                [
-                  "var",
-                  "red"
-                ]
-              ],
-              [
-                "var",
-                "redMax"
-              ]
-            ],
-            [
-              "/",
-              [
-                "band",
-                [
-                  "var",
-                  "green"
-                ]
-              ],
-              [
-                "var",
-                "greenMax"
-              ]
-            ],
-            [
-              "/",
-              [
-                "band",
-                [
-                  "var",
-                  "blue"
-                ]
-              ],
-              [
-                "var",
-                "blueMax"
-              ]
-            ],
-            1
-          ],
-          "gamma": 1.1
-        },
-        "source": {
-          "type": "GeoTIFF",
-          "normalize": false,
-          "sources": [
-            {
-              "url": "https://s2downloads.eox.at/demo/EOxCloudless/2020/rgbnir/s2cloudless2020-16bits_sinlge-file_z0-4.tif"
-            }
-          ]
-        }
+    {
+      "type": "Tile",
+      "properties": {
+        "id": "customId"
       },
-      {
-        "type": "Tile",
-        "properties": {
-          "id": "osm",
-          "title": "Open Street Map",
-          "layerControlExclusive": true
-        },
-        "visible": false,
-        "opacity": 0.5,
-        "source": {
-          "type": "OSM"
-        }
+      "source": {
+        "type": "OSM"
       }
-    ]
-  }
-];
+    }
+  ];
+}
 
 /**
  * An instance of the `eodash` style editor for geospatial features on a map.
@@ -233,11 +86,27 @@ export class EodashStyleEditor extends LitElement {
     this.docsHint = "Click on the Vite and Lit logos to learn more"
     this.count = 0
 
-    this.editorValue = "{}"
+    this.mapLayers = []
+    this.editorValue = exampleStyleDef
     this.editor = null
   }
 
+  _buildMapLayers()  {
+    this.mapLayers = createFgbConfig(
+      "https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb",
+      this.editorValue
+    );
+
+    this.mapLayers.forEach((layer) => {
+      layer.properties.layerConfig =  { style: this.editorValue };
+    })
+
+    console.log(this.mapLayers)
+  }
+
   render() {
+    this._buildMapLayers();
+
     return html`
       <style>
         ${componentStyle}
@@ -247,7 +116,7 @@ export class EodashStyleEditor extends LitElement {
         <eox-map
           id="map"
           .center='${[16.346,48.182]}'
-          .layers='${defaultMapConfig}'
+          .layers='${this.mapLayers}'
           .zoom='${12.5}'
           style="width: 100%; height: 100%;">
         </eox-map>
@@ -279,11 +148,11 @@ export class EodashStyleEditor extends LitElement {
               </div>
               <eox-jsonform
                 .schema='${jsonFormConfig}'
-                .value='${{"code":"{\n  \"hello\": \"world\"\n}"}}'
+                .value='${{"code": JSON.stringify(this.editorValue, null, 2)}}'
               ></eox-jsonform>
             </div>
 
-            <div class="card">
+            <!--<div class="card">
               <div class="editor-toolbar">
                 <span class="start">
                   <div class="icon-container editor">
@@ -298,15 +167,11 @@ export class EodashStyleEditor extends LitElement {
                   style="width: 300px; height: 300px;"
                 ></eox-layercontrol>
               </div>
-            </div>
+            </div>-->
           </div>
         </div>
       </div>
     `
-  }
-
-  _onClick() {
-    this.count++
   }
 
   static get styles() {
