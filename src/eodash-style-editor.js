@@ -61,51 +61,106 @@ function createFgbConfig(url, styleObject) {
 }
 
 /**
+ * If you don't care about primitives and only objects then this function
+ * is for you, otherwise look elsewhere.
+ * This function will return `false` for any valid json primitive.
+ * EG, 'true' -> false
+ *     '123' -> false
+ *     'null' -> false
+ *     '"I'm a string"' -> false
+ */
+function tryParseJson(jsonString) {
+  try {
+      var o = JSON.parse(jsonString);
+
+      // Handle non-exception-throwing cases:
+      // Neither JSON.parse(false) or JSON.parse(1234) throw errors, hence the type-checking,
+      // but... JSON.parse(null) returns null, and typeof null === "object", 
+      // so we must check for that, too. Thankfully, null is falsey, so this suffices:
+      if (o && typeof o === "object") {
+          return o;
+      }
+  }
+  catch (e) { }
+
+  return false;
+};
+
+/**
  * An instance of the `eodash` style editor for geospatial features on a map.
  *
  * @slot - This element has a slot
  * @csspart button - The button
  */
 export class EodashStyleEditor extends LitElement {
-  static get properties() {
-    return {
-      /**
-       * Copy for the read the docs hint.
-       */
-      docsHint: { type: String },
-
-      /**
-       * The number of times the button has been clicked.
-       */
-      count: { type: Number },
-    }
-  }
-
   constructor() {
     super()
-    this.docsHint = "Click on the Vite and Lit logos to learn more"
-    this.count = 0
-
-    this.mapLayers = []
-    this.editorValue = exampleStyleDef
+    this._mapLayers = []
+    this.editorValue = JSON.parse("{\"stroke-color\": \"magenta\",\"stroke-width\": 3}") //exampleStyleDef
     this.editor = null
+    this.geometryUrl = "https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb"
   }
 
+  static properties = {
+    // Make the map layers reactive
+    _mapLayers: {state: true}
+  };
+
   _buildMapLayers()  {
-    this.mapLayers = createFgbConfig(
-      "https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb",
+    this._mapLayers = createFgbConfig(
+      this.geometryUrl,
       this.editorValue
     );
 
-    this.mapLayers.forEach((layer) => {
-      layer.properties.layerConfig =  { style: this.editorValue };
+    this._mapLayers.forEach((layer) => {
+      if (layer.type == "Vector") {
+        layer.style = this.editorValue
+      }
     })
 
-    console.log(this.mapLayers)
+    console.log(this._mapLayers)
+
+    if (this.renderRoot.querySelector('eox-jsonform')) {
+      this.renderRoot
+        .querySelector('eox-jsonform')
+        .editor
+        .editors["root.code"]["ace_editor_instance"]
+        .textInput
+        .getElement()
+        .focus()
+    }
   }
+
+  onEditorInput(e) {
+    console.log(e);
+    var parseResult = tryParseJson(e);
+
+    if (parseResult !== false) {
+      console.log("updating editor value");
+      this.editorValue = parseResult
+      this._buildMapLayers()
+    }
+  }
+
 
   render() {
     this._buildMapLayers();
+
+    window.setTimeout(() => {
+      var aceEditor = this.renderRoot
+        .querySelector('eox-jsonform')
+        .editor
+        .editors["root.code"]["ace_editor_instance"]
+
+        this.renderRoot
+          .querySelector('eox-jsonform')
+          .editor
+          .editors["root.code"]["ace_editor_instance"]
+          .textInput
+          .getElement()
+          .addEventListener("input", (e) => this.onEditorInput(aceEditor.getValue())
+    )
+    }, 100)
 
     return html`
       <style>
@@ -116,7 +171,7 @@ export class EodashStyleEditor extends LitElement {
         <eox-map
           id="map"
           .center='${[16.346,48.182]}'
-          .layers='${this.mapLayers}'
+          .layers='${this._mapLayers}'
           .zoom='${12.5}'
           style="width: 100%; height: 100%;">
         </eox-map>
@@ -126,10 +181,14 @@ export class EodashStyleEditor extends LitElement {
             <input
               id="geometry-url-input"
               type="text"
+              value="${this.geometryUrl}"
               placeholder="Paste a link here to load geometry"
             />
 
-            <a class="load-button flex justify-center items-center text-white font-bold">
+            <a
+              class="load-button flex justify-center items-center text-white font-bold"
+              @click="${this._build_mapLayers}"
+            >
               Import
             </a>
           </div>
