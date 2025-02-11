@@ -96,6 +96,8 @@ export class EodashStyleEditor extends LitElement {
   constructor() {
     super()
     this._mapLayers = []
+    this._mapCenter = [16.346, 48.182];
+    
     this.editorValue = JSON.parse("{\"stroke-color\": \"magenta\",\"stroke-width\": 3}") //exampleStyleDef
     this.editor = null
     this.geometryUrl = "https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb"
@@ -103,7 +105,8 @@ export class EodashStyleEditor extends LitElement {
 
   static properties = {
     // Make the map layers reactive
-    _mapLayers: {state: true}
+    _mapLayers: {state: true},
+    _mapCenter: {state: true},
   };
 
   _buildMapLayers()  {
@@ -120,7 +123,7 @@ export class EodashStyleEditor extends LitElement {
 
     console.log(this._mapLayers)
 
-    if (this.renderRoot.querySelector('eox-jsonform')) {
+    window.setTimeout(() => {
       this.renderRoot
         .querySelector('eox-jsonform')
         .editor
@@ -128,7 +131,7 @@ export class EodashStyleEditor extends LitElement {
         .textInput
         .getElement()
         .focus()
-    }
+    }, 40)
   }
 
   onEditorInput(e) {
@@ -170,7 +173,7 @@ export class EodashStyleEditor extends LitElement {
       <div class="eodash-style-editor">
         <eox-map
           id="map"
-          .center='${[16.346,48.182]}'
+          .center='${this._mapCenter}'
           .layers='${this._mapLayers}'
           .zoom='${12.5}'
           style="width: 100%; height: 100%;">
