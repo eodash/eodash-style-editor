@@ -1,4 +1,5 @@
 import { LitElement, css, html } from "lit"
+import { fromUrl } from "geotiff"
 
 import "@eox/layout"
 import "@eox/map"
@@ -35,7 +36,7 @@ const jsonFormConfig = {
 }
 
 /* Create a map config for Flat Geo Buf sources */
-function createFgbConfig(url, styleObject) {
+function createFgbConfig(url) {
   return [
     {
       "type": "Vector",
@@ -46,6 +47,35 @@ function createFgbConfig(url, styleObject) {
       "source": {
         "type": "FlatGeoBuf",
         "url": "https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb"
+      }
+    },
+    {
+      "type": "Tile",
+      "properties": {
+        "id": "customId"
+      },
+      "source": {
+        "type": "OSM"
+      }
+    }
+  ];
+}
+
+/* Create a map config for Flat Geo Buf sources */
+function createGeoTiffConfig(url) {
+  return [
+    {
+      "type": "WebGLTile",
+      "properties": {
+        "id": "geotiffLayer"
+      },
+      "source": {
+        "type": "GeoTIFF",
+        "sources": [
+          {
+            "url": url
+          }
+        ]
       }
     },
     {
@@ -100,20 +130,44 @@ export class EodashStyleEditor extends LitElement {
     
     this.editorValue = JSON.parse("{\"stroke-color\": \"magenta\",\"stroke-width\": 3}") //exampleStyleDef
     this.editor = null
-    this.geometryUrl = "https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb"
+    this._geometryUrl = "https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb"
   }
 
   static properties = {
     // Make the map layers reactive
     _mapLayers: {state: true},
     _mapCenter: {state: true},
+    _geometryUrl: {state: true},
   };
 
-  _buildMapLayers()  {
-    this._mapLayers = createFgbConfig(
-      this.geometryUrl,
-      this.editorValue
-    );
+  _getFileFormat(url) {
+    if (url.includes(".tif")) { return "tif" }
+    if (url.includes(".fgb")) { return "fgb" }
+
+    return "unknown"
+  }
+
+  async _buildMapLayers()  {
+    const inputFormat = this._getFileFormat(this._geometryUrl)
+
+    switch (inputFormat) {
+      case "fgb":
+        this._mapLayers = createFgbConfig(
+          this._geometryUrl,
+          this.editorValue
+        )
+        break
+      case "tif":
+        console.log(await getGeoTiffCenterAndZoom(this._geometryUrl))
+        this._mapLayers = createGeoTiffConfig(
+          this._geometryUrl,
+          this.editorValue
+        )
+      default:
+        console.warn("File format not supported. Please use FGB, GeoTiff or COG files.")
+    }
+
+    console.log(inputFormat)
 
     this._mapLayers.forEach((layer) => {
       if (layer.type == "Vector") {
@@ -134,21 +188,19 @@ export class EodashStyleEditor extends LitElement {
     }, 40)
   }
 
-  onEditorInput(e) {
+  async onEditorInput(e) {
     console.log(e);
     var parseResult = tryParseJson(e);
 
     if (parseResult !== false) {
       console.log("updating editor value");
       this.editorValue = parseResult
-      this._buildMapLayers()
+      await this._buildMapLayers()
     }
   }
 
 
   render() {
-    this._buildMapLayers();
-
     window.setTimeout(() => {
       var aceEditor = this.renderRoot
         .querySelector('eox-jsonform')
@@ -184,13 +236,14 @@ export class EodashStyleEditor extends LitElement {
             <input
               id="geometry-url-input"
               type="text"
-              value="${this.geometryUrl}"
+              value="${this._geometryUrl}"
+              @input="${(e) => this._geometryUrl = e.target.value}"
               placeholder="Paste a link here to load geometry"
             />
 
             <a
               class="load-button flex justify-center items-center text-white font-bold"
-              @click="${this._build_mapLayers}"
+              @click="${this._buildMapLayers}"
             >
               Import
             </a>
@@ -251,6 +304,59 @@ export class EodashStyleEditor extends LitElement {
         }
       }
     `
+  }
+}
+
+async function getGeoTiffCenterAndZoom(url) {
+  console.log("calculating Center and Zoom")
+  try {
+    // Load and parse the GeoTIFF file
+    const tiff = await fromUrl(url);
+    const image = await tiff.getImage();
+
+    // Get the image's bounding box
+    const bbox = image.getBoundingBox();
+
+    // Calculate center coordinates
+    const center = {
+      lng: (bbox[0] + bbox[2]) / 2, // Average of min and max longitude
+      lat: (bbox[1] + bbox[3]) / 2  // Average of min and max latitude
+    };
+
+    // Calculate appropriate zoom level based on bounding box size
+    const latDiff = Math.abs(bbox[3] - bbox[1]);
+    const lngDiff = Math.abs(bbox[2] - bbox[0]);
+    const maxDiff = Math.max(latDiff, lngDiff);
+
+    // Calculate zoom level based on the geographic extent
+    // Using the equatorial circumference of the Earth (40,075 km)
+    const EARTH_CIRCUMFERENCE = 40075;
+    const TILE_SIZE = 256;
+    const maxLatDistance = EARTH_CIRCUMFERENCE * Math.cos(((bbox[1] + bbox[3]) / 2) * Math.PI / 180);
+
+    // Calculate zoom based on the larger of width or height
+    const widthZoom = Math.log2(TILE_SIZE * maxLatDistance / (lngDiff * EARTH_CIRCUMFERENCE));
+    const heightZoom = Math.log2(TILE_SIZE * EARTH_CIRCUMFERENCE / (latDiff * EARTH_CIRCUMFERENCE));
+    let zoom = Math.floor(Math.min(widthZoom, heightZoom));
+
+    // Ensure zoom is within reasonable bounds (0-20)
+    zoom = Math.min(Math.max(zoom, 0), 20);
+
+    console.log("Processed GeoTIFF")
+
+    return {
+      center,
+      zoom,
+      bounds: {
+        north: bbox[3],
+        south: bbox[1],
+        east: bbox[2],
+        west: bbox[0]
+      }
+    };
+  } catch (error) {
+    console.error('Error processing GeoTIFF:', error);
+    throw error;
   }
 }
 
