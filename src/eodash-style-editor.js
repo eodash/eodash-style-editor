@@ -1,5 +1,6 @@
 import { LitElement, css, html } from "lit"
 import { fromUrl } from "geotiff"
+import stringify from "json-stringify-pretty-compact"
 
 import "@eox/layout"
 import "@eox/map"
@@ -263,7 +264,7 @@ export class EodashStyleEditor extends LitElement {
               </div>
               <eox-jsonform
                 .schema='${jsonFormConfig}'
-                .value='${{"code": JSON.stringify(this.editorValue, null, 2)}}'
+                .value='${{"code": stringify(this.editorValue, {}, 2)}}'
               ></eox-jsonform>
             </div>
 
