@@ -1,0 +1,56 @@
+@import "tailwindcss";
+
+.style-editor-toolbar {
+  --toolbar-height: 48px;
+  --toolbar-border-radius: 12px;
+}
+
+#logo {
+  height: var(--toolbar-height);
+  width: var(--toolbar-height);
+  border-radius: var(--toolbar-border-radius);
+  background: #004170;
+  margin-right: 10px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  box-shadow: 0px 3px 5px 0px rgba(0,0,0,0.17);
+}
+
+.style-editor-toolbar {
+  position: fixed;
+  top: 20px;
+  left: 20px;
+  right: 20px;
+  height: var(--toolbar-height);
+  border-radius: var(--toolbar-border-radius);
+}
+
+.style-editor-toolbar input {
+  min-width: 400px;
+
+  width: calc(100% - 100px);
+  background: white;
+  border: none;
+  height: 48px;
+  color: #333;
+  border-radius: 12px 0 0 12px;
+  font-size: 14px;
+  font-weight: 700;
+  padding-left: 16px;
+  font-family: "IBM Plex Mono";
+
+  background: #fffa;
+  backdrop-filter: blur(10px);
+  box-shadow: 0px 3px 5px 0px rgba(0,0,0,0.17);
+}
+
+.style-editor-toolbar .load-button {
+  width: 100px;
+  min-height: 48px;
+  background: #004170;
+  border-radius: 0 12px 12px 0;
+  user-select: none;
+  cursor: pointer;
+  box-shadow: 0px 3px 5px 0px rgba(0,0,0,0.17);
+}

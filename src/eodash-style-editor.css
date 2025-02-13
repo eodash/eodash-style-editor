@@ -1,6 +1,5 @@
 @import "tailwindcss";
 
-
 :root, eodash-style-editor {
   width: 100vw;
   height: 100vh;
@@ -25,7 +24,7 @@ eox-map {
 .sidebar {
   position: fixed;
   left: 0;
-  top: 0;
+  top: 70px;
   width: 600px;
   height: 100vh;
   padding: 20px;
@@ -112,43 +111,6 @@ eox-map {
   font-weight: 700;
   font-size: 16px;
   color: #051E2E;
-}
-
-.style-editor-input-container {
-  position: fixed;
-  top: 20px;
-  left: 500px;
-  width: calc(100vw - 480px - 2 * 20px);
-  height: 48px;
-  border-radius: 12px;
-  box-shadow: 0px 3px 5px 0px rgba(0,0,0,0.17);
-}
-
-.style-editor-input-container input {
-  min-width: 400px;
-
-  width: calc(100% - 100px);
-  background: white;
-  border: none;
-  height: 48px;
-  color: #333;
-  border-radius: 12px 0 0 12px;
-  font-size: 14px;
-  font-weight: 700;
-  padding-left: 16px;
-  font-family: "IBM Plex Mono";
-
-  background: #fffa;
-  backdrop-filter: blur(10px);
-}
-
-.style-editor-input-container .load-button {
-  width: 100px;
-  min-height: 48px;
-  background: #004170;
-  border-radius: 0 12px 12px 0;
-  user-select: none;
-  cursor: pointer;
 }
 
 .card {

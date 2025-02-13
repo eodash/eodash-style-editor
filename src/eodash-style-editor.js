@@ -2,19 +2,23 @@ import { LitElement, css, html } from "lit"
 import { fromUrl } from "geotiff"
 import stringify from "json-stringify-pretty-compact"
 
+import { geojson } from "flatgeobuf";
+
 import "@eox/layout"
 import "@eox/map"
 import "@eox/layercontrol"
 import "@eox/map/dist/eox-map-advanced-layers-and-sources.js"
 import "@eox/jsonform"
 
+import "./components/toolbar/toolbar"
+
 import "./fonts/IBMPlexMono-Regular.ttf"
 
 import componentStyle from "./eodash-style-editor.css?inline"
 
-import exampleStyleDef from "./example-style.json?inline"
+//import exampleStyleDef from "./example-style.json?inline"
 
-const maxEditorHeight = 276
+const maxEditorHeight = 360
 
 const jsonFormConfig = {
   "type":"object",
@@ -29,7 +33,7 @@ const jsonFormConfig = {
               "tabSize":2,
               "fontSize":14,
               "fontFamily":"'IBM Plex Mono'",
-              "maxPixelHeight":"maxEditorHeight"
+              "maxPixelHeight": maxEditorHeight,
            }
         }
      }
@@ -128,16 +132,21 @@ export class EodashStyleEditor extends LitElement {
     super()
     this._mapLayers = []
     this._mapCenter = [16.346, 48.182];
+    this._mapZoom = 12.5;
+    this._mapZoomExtent = undefined;
     
-    this.editorValue = JSON.parse("{\"stroke-color\": \"magenta\",\"stroke-width\": 3}") //exampleStyleDef
+    this.editorValue = JSON.parse("{\"stroke-color\": \"#004170\",\"stroke-width\": 3}")
+    this.lastEditorValue = ""
     this.editor = null
     this._geometryUrl = "https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb"
   }
 
   static properties = {
-    // Make the map layers reactive
+    // Reactive internal state
     _mapLayers: {state: true},
     _mapCenter: {state: true},
+    _mapZoom: {state: true},
+    _mapZoomExtent: {state: true},
     _geometryUrl: {state: true},
   };
 
@@ -149,17 +158,26 @@ export class EodashStyleEditor extends LitElement {
   }
 
   async _buildMapLayers()  {
+    console.log("buildMapLayers")
+
+    console.log("Generating map layers")
     const inputFormat = this._getFileFormat(this._geometryUrl)
+
+    console.log(`Loading ${this._geometryUrl}`)
 
     switch (inputFormat) {
       case "fgb":
+        //console.log(getFgbInfo(this._geometryUrl))
         this._mapLayers = createFgbConfig(
           this._geometryUrl,
           this.editorValue
         )
         break
       case "tif":
-        console.log(await getGeoTiffCenterAndZoom(this._geometryUrl))
+        console.log("Loading GeoTIFF/COG")
+        const tiffInfo = await getGeoTiffCenterAndZoom(this._geometryUrl)
+        console.log(tiffInfo)
+        this._mapZoomExtent = tiffInfo.extent;
         this._mapLayers = createGeoTiffConfig(
           this._geometryUrl,
           this.editorValue
@@ -168,15 +186,21 @@ export class EodashStyleEditor extends LitElement {
         console.warn("File format not supported. Please use FGB, GeoTiff or COG files.")
     }
 
-    console.log(inputFormat)
-
+    // Apply our OpenLayers style, for now it is simply added to each generated vector layer.
+    //
+    // NOTE: Generation for non-vector layers is disabled here because it leads to an
+    //       app-breaking exception in the `eox-map` instance when the map is handling
+    //       the style object.
     this._mapLayers.forEach((layer) => {
       if (layer.type == "Vector") {
         layer.style = this.editorValue
       }
     })
 
-    console.log(this._mapLayers)
+    const map = this.renderRoot.querySelector('eox-map');
+
+    this._mapZoom = map.zoom
+    this._mapCenter = map.center
 
     window.setTimeout(() => {
       this.renderRoot
@@ -190,11 +214,10 @@ export class EodashStyleEditor extends LitElement {
   }
 
   async onEditorInput(e) {
-    console.log(e);
     var parseResult = tryParseJson(e);
 
+    // Only rebuild map layers if the JSON parse result is valid
     if (parseResult !== false) {
-      console.log("updating editor value");
       this.editorValue = parseResult
       await this._buildMapLayers()
     }
@@ -214,7 +237,7 @@ export class EodashStyleEditor extends LitElement {
           .editors["root.code"]["ace_editor_instance"]
           .textInput
           .getElement()
-          .addEventListener("input", (e) => this.onEditorInput(aceEditor.getValue())
+          .addEventListener("input", (e) => this.onEditorInput(e.target.value)
     )
     }, 100)
 
@@ -228,28 +251,18 @@ export class EodashStyleEditor extends LitElement {
           id="map"
           .center='${this._mapCenter}'
           .layers='${this._mapLayers}'
-          .zoom='${12.5}'
+          .zoom='${this._mapZoom}'
+          .zoomExtent='${this._mapZoomExtent}'
           style="width: 100%; height: 100%;">
         </eox-map>
 
-        <div class="style-editor-input-container">
-          <div class="flex">
-            <input
-              id="geometry-url-input"
-              type="text"
-              value="${this._geometryUrl}"
-              @input="${(e) => this._geometryUrl = e.target.value}"
-              placeholder="Paste a link here to load geometry"
-            />
-
-            <a
-              class="load-button flex justify-center items-center text-white font-bold"
-              @click="${this._buildMapLayers}"
-            >
-              Import
-            </a>
-          </div>
-        </div>
+        <style-editor-toolbar
+          url="https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb"
+          @submit="${(event) => {
+            this._geometryUrl = event.detail
+            this._buildMapLayers()
+          }}"
+        ></style-editor-toolbar>
 
         <div class="sidebar">
           <div class="sidebar-items">
@@ -268,7 +281,7 @@ export class EodashStyleEditor extends LitElement {
               ></eox-jsonform>
             </div>
 
-            <!--<div class="card">
+            <div class="card">
               <div class="editor-toolbar">
                 <span class="start">
                   <div class="icon-container editor">
@@ -283,7 +296,7 @@ export class EodashStyleEditor extends LitElement {
                   style="width: 300px; height: 300px;"
                 ></eox-layercontrol>
               </div>
-            </div>-->
+            </div>
           </div>
         </div>
       </div>
@@ -316,45 +329,15 @@ async function getGeoTiffCenterAndZoom(url) {
     const image = await tiff.getImage();
 
     // Get the image's bounding box
-    const bbox = image.getBoundingBox();
-
-    // Calculate center coordinates
-    const center = {
-      lng: (bbox[0] + bbox[2]) / 2, // Average of min and max longitude
-      lat: (bbox[1] + bbox[3]) / 2  // Average of min and max latitude
-    };
-
-    // Calculate appropriate zoom level based on bounding box size
-    const latDiff = Math.abs(bbox[3] - bbox[1]);
-    const lngDiff = Math.abs(bbox[2] - bbox[0]);
-    const maxDiff = Math.max(latDiff, lngDiff);
-
-    // Calculate zoom level based on the geographic extent
-    // Using the equatorial circumference of the Earth (40,075 km)
-    const EARTH_CIRCUMFERENCE = 40075;
-    const TILE_SIZE = 256;
-    const maxLatDistance = EARTH_CIRCUMFERENCE * Math.cos(((bbox[1] + bbox[3]) / 2) * Math.PI / 180);
-
-    // Calculate zoom based on the larger of width or height
-    const widthZoom = Math.log2(TILE_SIZE * maxLatDistance / (lngDiff * EARTH_CIRCUMFERENCE));
-    const heightZoom = Math.log2(TILE_SIZE * EARTH_CIRCUMFERENCE / (latDiff * EARTH_CIRCUMFERENCE));
-    let zoom = Math.floor(Math.min(widthZoom, heightZoom));
-
-    // Ensure zoom is within reasonable bounds (0-20)
-    zoom = Math.min(Math.max(zoom, 0), 20);
-
-    console.log("Processed GeoTIFF")
+    const origin = image.getOrigin();
+    const resolution = image.getResolution();
+    const extent = image.getBoundingBox();
 
     return {
-      center,
-      zoom,
-      bounds: {
-        north: bbox[3],
-        south: bbox[1],
-        east: bbox[2],
-        west: bbox[0]
-      }
-    };
+      origin,
+      resolution,
+      extent,
+    }
   } catch (error) {
     console.error('Error processing GeoTIFF:', error);
     throw error;
