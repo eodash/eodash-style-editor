@@ -202,8 +202,10 @@ export class EodashStyleEditor extends LitElement {
 
     const map = this.renderRoot.querySelector('eox-map');
 
-    this._mapZoom = map.zoom
-    this._mapCenter = map.center
+    if (map) {
+      this._mapZoom = map.zoom
+      this._mapCenter = map.center
+    }
 
     window.setTimeout(() => {
       this.renderRoot
@@ -298,14 +300,12 @@ export class EodashStyleEditor extends LitElement {
                   <h3 class="layers-title">Layers</h3>
                 </span>
               </div>
-              <div id="layercontrol" style="width: 300px; height: 300px;">
-                ${this.isInitialized
-                    ? `<eox-layercontrol
-                        for="eox-map"
-                        style="width: 300px; height: 300px;"
-                      ></eox-layercontrol>`
-                    : ''
-                }
+              <div id="layercontrol" style="padding-top: 30px; width: 300px; height: 300px;">
+                <eox-layercontrol
+                  idProperty='id'
+                  titleProperty='title'
+                  .for="${this.renderRoot.querySelector("eox-map")}">
+                </eox-layercontrol>
               </div>
             </div>
           </div>
