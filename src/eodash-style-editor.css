@@ -120,7 +120,7 @@ eox-map {
   margin-bottom: 16px;
   border-radius: 12px;
   width: 460px;
-  min-height: calc(100vh - 40px);
+  min-height: 300px;
   background: #fffa;
   box-shadow: 0px 3px 5px 0px rgba(0,0,0,0.17);
   backdrop-filter: blur(10px);

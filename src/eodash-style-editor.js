@@ -130,10 +130,12 @@ function tryParseJson(jsonString) {
 export class EodashStyleEditor extends LitElement {
   constructor() {
     super()
+
+    this._isInitialized = false
     this._mapLayers = []
-    this._mapCenter = [16.346, 48.182];
-    this._mapZoom = 12.5;
-    this._mapZoomExtent = undefined;
+    this._mapCenter = [16.346, 48.182]
+    this._mapZoom = 12.5
+    this._mapZoomExtent = undefined
     
     this.editorValue = JSON.parse("{\"stroke-color\": \"#004170\",\"stroke-width\": 3}")
     this.lastEditorValue = ""
@@ -148,6 +150,7 @@ export class EodashStyleEditor extends LitElement {
     _mapZoom: {state: true},
     _mapZoomExtent: {state: true},
     _geometryUrl: {state: true},
+    _isInitialized: {state: true},
   };
 
   _getFileFormat(url) {
@@ -225,6 +228,10 @@ export class EodashStyleEditor extends LitElement {
 
 
   render() {
+    if (!this._isInitialized) {
+      this._buildMapLayers()
+    }
+
     window.setTimeout(() => {
       var aceEditor = this.renderRoot
         .querySelector('eox-jsonform')
@@ -260,6 +267,7 @@ export class EodashStyleEditor extends LitElement {
           url="https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb"
           @submit="${(event) => {
             this._geometryUrl = event.detail
+            this._isInitialized = true
             this._buildMapLayers()
           }}"
         ></style-editor-toolbar>
@@ -290,11 +298,14 @@ export class EodashStyleEditor extends LitElement {
                   <h3 class="layers-title">Layers</h3>
                 </span>
               </div>
-              <div style="width: 300px; height: 300px;">
-                <eox-layercontrol
-                  for="eox-map"
-                  style="width: 300px; height: 300px;"
-                ></eox-layercontrol>
+              <div id="layercontrol" style="width: 300px; height: 300px;">
+                ${this.isInitialized
+                    ? `<eox-layercontrol
+                        for="eox-map"
+                        style="width: 300px; height: 300px;"
+                      ></eox-layercontrol>`
+                    : ''
+                }
               </div>
             </div>
           </div>
