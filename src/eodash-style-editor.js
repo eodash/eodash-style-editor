@@ -138,9 +138,24 @@ export class EodashStyleEditor extends LitElement {
     this._mapZoomExtent = undefined
     
     this.editorValue = JSON.parse("{\"stroke-color\": \"#004170\",\"stroke-width\": 3}")
+    this.editorValue = {
+      "stroke-color": "red",
+      "color": [
+        "case",
+        [">", ["band", 1], 0],
+        [
+          "array",
+          ["/", ["band", 1], 8],
+          ["/", ["band", 2], 4],
+          ["/", ["band", 3], 4],
+          1
+        ],
+        ["color", 0, 0, 0, 0]
+      ]
+    }
     this.lastEditorValue = ""
     this.editor = null
-    this._geometryUrl = "https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb"
+    this._geometryUrl = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/36/Q/WD/2020/7/S2A_36QWD_20200701_0_L2A/TCI.tif"
   }
 
   static properties = {
@@ -185,6 +200,7 @@ export class EodashStyleEditor extends LitElement {
           this._geometryUrl,
           this.editorValue
         )
+        break
       default:
         console.warn("File format not supported. Please use FGB, GeoTiff or COG files.")
     }
@@ -195,12 +211,15 @@ export class EodashStyleEditor extends LitElement {
     //       app-breaking exception in the `eox-map` instance when the map is handling
     //       the style object.
     this._mapLayers.forEach((layer) => {
-      if (layer.type == "Vector") {
+      if (layer.type == "Vector" || layer.type == "WebGLTile") {
+        console.log(`${layer.type}`)
         layer.style = this.editorValue
       }
     })
 
     const map = this.renderRoot.querySelector('eox-map');
+
+    console.log(this._mapLayers);
 
     if (map) {
       this._mapZoom = map.zoom
@@ -219,10 +238,14 @@ export class EodashStyleEditor extends LitElement {
   }
 
   async onEditorInput(e) {
+    console.log(e);
     var parseResult = tryParseJson(e);
+
+    console.log(parseResult);
 
     // Only rebuild map layers if the JSON parse result is valid
     if (parseResult !== false) {
+      console.log(parseResult);
       this.editorValue = parseResult
       await this._buildMapLayers()
     }
@@ -232,6 +255,7 @@ export class EodashStyleEditor extends LitElement {
   render() {
     if (!this._isInitialized) {
       this._buildMapLayers()
+      this._isInitialized = true
     }
 
     window.setTimeout(() => {
@@ -266,10 +290,9 @@ export class EodashStyleEditor extends LitElement {
         </eox-map>
 
         <style-editor-toolbar
-          url="https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb"
+          url="${this._geometryUrl}"
           @submit="${(event) => {
             this._geometryUrl = event.detail
-            this._isInitialized = true
             this._buildMapLayers()
           }}"
         ></style-editor-toolbar>
