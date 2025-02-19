@@ -2,7 +2,8 @@ import { LitElement, css, html } from "lit"
 import { fromUrl } from "geotiff"
 import stringify from "json-stringify-pretty-compact"
 
-import { geojson } from "flatgeobuf";
+import { geojson } from "flatgeobuf"
+import proj4 from "proj4"
 
 import "@eox/layout"
 import "@eox/map"
@@ -133,19 +134,16 @@ export class EodashStyleEditor extends LitElement {
 
     this._isInitialized = false
     this._mapLayers = []
-    this._mapCenter = [16.346, 48.182]
-    this._mapZoom = 12.5
     this._mapZoomExtent = undefined
-    
-    this.editorValue = JSON.parse("{\"stroke-color\": \"#004170\",\"stroke-width\": 3}")
-    this.editorValue = {
+
+    this._editorValue = {
       "stroke-color": "red",
       "color": [
         "case",
         [">", ["band", 1], 0],
         [
           "array",
-          ["/", ["band", 1], 8],
+          ["/", ["band", 1], 80],
           ["/", ["band", 2], 4],
           ["/", ["band", 3], 4],
           1
@@ -153,19 +151,17 @@ export class EodashStyleEditor extends LitElement {
         ["color", 0, 0, 0, 0]
       ]
     }
-    this.lastEditorValue = ""
-    this.editor = null
+
     this._geometryUrl = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/36/Q/WD/2020/7/S2A_36QWD_20200701_0_L2A/TCI.tif"
   }
 
   static properties = {
     // Reactive internal state
     _mapLayers: {state: true},
-    _mapCenter: {state: true},
-    _mapZoom: {state: true},
     _mapZoomExtent: {state: true},
     _geometryUrl: {state: true},
     _isInitialized: {state: true},
+    _editorValue: {state: true},
   };
 
   _getFileFormat(url) {
@@ -175,30 +171,36 @@ export class EodashStyleEditor extends LitElement {
     return "unknown"
   }
 
-  async _buildMapLayers()  {
-    console.log("buildMapLayers")
+  async _buildMapLayers(options)  {
+    var layers = [];
 
     console.log("Generating map layers")
     const inputFormat = this._getFileFormat(this._geometryUrl)
 
-    console.log(`Loading ${this._geometryUrl}`)
+    console.log(`shouldBoundsUpdate: ${options.shouldBoundsUpdate}`)
 
     switch (inputFormat) {
       case "fgb":
         //console.log(getFgbInfo(this._geometryUrl))
-        this._mapLayers = createFgbConfig(
+        layers = createFgbConfig(
           this._geometryUrl,
-          this.editorValue
+          this._editorValue
         )
         break
       case "tif":
-        console.log("Loading GeoTIFF/COG")
-        const tiffInfo = await getGeoTiffCenterAndZoom(this._geometryUrl)
-        console.log(tiffInfo)
-        this._mapZoomExtent = tiffInfo.extent;
-        this._mapLayers = createGeoTiffConfig(
+        const tiffInfo = await getGeoTiffCenterAndZoom(
           this._geometryUrl,
-          this.editorValue
+          options.shouldBoundsUpdate,
+        )
+
+        if (options.shouldBoundsUpdate) {
+          this._mapZoomExtent = tiffInfo.extent;
+        }
+
+        console.log(this._mapZoomExtent)
+        layers = createGeoTiffConfig(
+          this._geometryUrl,
+          this._editorValue
         )
         break
       default:
@@ -210,21 +212,20 @@ export class EodashStyleEditor extends LitElement {
     // NOTE: Generation for non-vector layers is disabled here because it leads to an
     //       app-breaking exception in the `eox-map` instance when the map is handling
     //       the style object.
-    this._mapLayers.forEach((layer) => {
+    layers.forEach((layer) => {
       if (layer.type == "Vector" || layer.type == "WebGLTile") {
-        console.log(`${layer.type}`)
-        layer.style = this.editorValue
+        //console.log(`${layer.type}`)
+        layer.style = this._editorValue
       }
+
+      layer.opacity = 0.9
     })
 
     const map = this.renderRoot.querySelector('eox-map');
 
-    console.log(this._mapLayers);
+    this._mapLayers = layers
 
-    if (map) {
-      this._mapZoom = map.zoom
-      this._mapCenter = map.center
-    }
+    console.log(this._mapLayers);
 
     window.setTimeout(() => {
       this.renderRoot
@@ -237,24 +238,26 @@ export class EodashStyleEditor extends LitElement {
     }, 40)
   }
 
-  async onEditorInput(e) {
-    console.log(e);
-    var parseResult = tryParseJson(e);
+  async onEditorInput() {
+    this._editorValue = this.renderRoot
+      .querySelector('eox-jsonform')
+      .editor
+      .getValue()
+      .code;
 
-    console.log(parseResult);
+    var parseResult = tryParseJson(this._editorValue);
 
     // Only rebuild map layers if the JSON parse result is valid
     if (parseResult !== false) {
-      console.log(parseResult);
-      this.editorValue = parseResult
-      await this._buildMapLayers()
+      //console.log("Valid JSON")
+      this._editorValue = parseResult
+      await this._buildMapLayers({shouldBoundsUpdate: false})
     }
   }
 
-
-  render() {
+  firstUpdated() {
     if (!this._isInitialized) {
-      this._buildMapLayers()
+      this._buildMapLayers({shouldBoundsUpdate: true})
       this._isInitialized = true
     }
 
@@ -270,21 +273,21 @@ export class EodashStyleEditor extends LitElement {
           .editors["root.code"]["ace_editor_instance"]
           .textInput
           .getElement()
-          .addEventListener("input", (e) => this.onEditorInput(e.target.value)
-    )
+          .addEventListener("input", (_e) => this.onEditorInput())
     }, 100)
+  }
 
+  render() {
     return html`
       <style>
         ${componentStyle}
       </style>
-
       <div class="eodash-style-editor">
         <eox-map
           id="map"
-          .center='${this._mapCenter}'
+          
           .layers='${this._mapLayers}'
-          .zoom='${this._mapZoom}'
+          
           .zoomExtent='${this._mapZoomExtent}'
           style="width: 100%; height: 100%;">
         </eox-map>
@@ -293,7 +296,7 @@ export class EodashStyleEditor extends LitElement {
           url="${this._geometryUrl}"
           @submit="${(event) => {
             this._geometryUrl = event.detail
-            this._buildMapLayers()
+            this._buildMapLayers({shouldBoundsUpdate: true})
           }}"
         ></style-editor-toolbar>
 
@@ -310,7 +313,7 @@ export class EodashStyleEditor extends LitElement {
               </div>
               <eox-jsonform
                 .schema='${jsonFormConfig}'
-                .value='${{"code": stringify(this.editorValue, {}, 2)}}'
+                .value='${{"code": stringify(this._editorValue, {}, 2)}}'
               ></eox-jsonform>
             </div>
 
@@ -356,7 +359,7 @@ export class EodashStyleEditor extends LitElement {
 }
 
 async function getGeoTiffCenterAndZoom(url) {
-  console.log("calculating Center and Zoom")
+  //console.log("calculating Center and Zoom")
   try {
     // Load and parse the GeoTIFF file
     const tiff = await fromUrl(url);
@@ -367,10 +370,33 @@ async function getGeoTiffCenterAndZoom(url) {
     const resolution = image.getResolution();
     const extent = image.getBoundingBox();
 
+    // Extract the geo key number that we can use as an EPSG number identifier with
+    // proj4, so that we can dynamically detect the GeoTIFF projection and convert
+    // into the usual EPSG:3857 that `eox-map` uses.
+    //
+    // The string is very simple, just compose `EPSG:${geoKey}`.
+    let geoKey = image.geoKeys.ProjectedCSTypeGeoKey || image.geoKeys.GeographicTypeGeoKey || 3857;
+
+    // The `proj4` API only works with coordinate pairs, so we need to temporarily turn our
+    // bounding box array into two pairs of coordinates here for conversion.
+    const transformedExtent = [
+      proj4(`EPSG:${geoKey}`, 'EPSG:3857', [extent[0], extent[1]]),
+      proj4(`EPSG:${geoKey}`, 'EPSG:3857', [extent[2], extent[3]]),
+    ]
+
+    // Move the values from our two converted coordinates back into the linear
+    // arrangement we had before.
+    const finalExtent = [
+      transformedExtent[0][0],
+      transformedExtent[0][1],
+      transformedExtent[1][0],
+      transformedExtent[1][1],
+    ];
+
     return {
       origin,
       resolution,
-      extent,
+      extent: finalExtent,
     }
   } catch (error) {
     console.error('Error processing GeoTIFF:', error);
