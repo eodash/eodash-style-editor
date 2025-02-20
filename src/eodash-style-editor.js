@@ -134,7 +134,7 @@ export class EodashStyleEditor extends LitElement {
 
     this._isInitialized = false
     this._mapLayers = []
-    this._mapZoomExtent = undefined
+    this._mapZoomExtent = null
 
     this._editorValue = {
       "stroke-color": "red",
@@ -143,7 +143,7 @@ export class EodashStyleEditor extends LitElement {
         [">", ["band", 1], 0],
         [
           "array",
-          ["/", ["band", 1], 80],
+          ["/", ["band", 1], 2  ],
           ["/", ["band", 2], 4],
           ["/", ["band", 3], 4],
           1
@@ -152,6 +152,7 @@ export class EodashStyleEditor extends LitElement {
       ]
     }
 
+    this._isMapLoading = false;
     this._geometryUrl = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/36/Q/WD/2020/7/S2A_36QWD_20200701_0_L2A/TCI.tif"
   }
 
@@ -162,6 +163,7 @@ export class EodashStyleEditor extends LitElement {
     _geometryUrl: {state: true},
     _isInitialized: {state: true},
     _editorValue: {state: true},
+    _isMapLoading: {state: true},
   };
 
   _getFileFormat(url) {
@@ -172,6 +174,8 @@ export class EodashStyleEditor extends LitElement {
   }
 
   async _buildMapLayers(options)  {
+    this._isMapLoading = true;
+    console.log('_isMapLoading == true')
     var layers = [];
 
     console.log("Generating map layers")
@@ -195,6 +199,7 @@ export class EodashStyleEditor extends LitElement {
 
         if (options.shouldBoundsUpdate) {
           this._mapZoomExtent = tiffInfo.extent;
+          console.log(this._mapZoomExtent)
         }
 
         console.log(this._mapZoomExtent)
@@ -221,11 +226,11 @@ export class EodashStyleEditor extends LitElement {
       layer.opacity = 0.9
     })
 
-    const map = this.renderRoot.querySelector('eox-map');
+    const map = this.renderRoot.querySelector('eox-map')
 
     this._mapLayers = layers
 
-    console.log(this._mapLayers);
+    console.log(this._mapLayers)
 
     window.setTimeout(() => {
       this.renderRoot
@@ -236,21 +241,30 @@ export class EodashStyleEditor extends LitElement {
         .getElement()
         .focus()
     }, 40)
+
+    this._isMapLoading = false
   }
 
   async onEditorInput() {
-    this._editorValue = this.renderRoot
-      .querySelector('eox-jsonform')
-      .editor
-      .getValue()
-      .code;
+    // 1. Quit early if the map is currently already loading.
+    if (this._isMapLoading) return;
 
-    var parseResult = tryParseJson(this._editorValue);
+    // 2. Retrieve the code the user has edited from the Ace Editor in `eox-jsonform`.
+    const currentJSON = this.renderRoot
+        .querySelector('eox-jsonform')
+        .editor
+        .getValue()
+        .code
 
-    // Only rebuild map layers if the JSON parse result is valid
+    // 3. Validate JSON string and return deserialized object if parsing was successful.
+    var parseResult = tryParseJson(currentJSON)
+
+    // 4. Rebuild map layers and set editor string if parsing succeeded.
     if (parseResult !== false) {
-      //console.log("Valid JSON")
+      // It is important to to only set the editor value only if the parsing was successful,
+      // otherwise desynchronization sneaks in and messes with our formatting. Do not move.
       this._editorValue = parseResult
+      // Rebuild map layers
       await this._buildMapLayers({shouldBoundsUpdate: false})
     }
   }
@@ -283,14 +297,22 @@ export class EodashStyleEditor extends LitElement {
         ${componentStyle}
       </style>
       <div class="eodash-style-editor">
-        <eox-map
-          id="map"
-          
-          .layers='${this._mapLayers}'
-          
-          .zoomExtent='${this._mapZoomExtent}'
-          style="width: 100%; height: 100%;">
-        </eox-map>
+        ${this._isMapLoading && this._mapZoomExtent
+            ? html`<div 
+                id="map-loading"
+              >
+                <div class="spinner">
+                  <div class="double-bounce1"></div>
+                  <div class="double-bounce2"></div>
+                </div>
+              </div>`
+            : html`<eox-map
+                id="map"
+                .layers='${this._mapLayers}'
+                .zoomExtent='${this._mapZoomExtent}'
+                style="width: 100%; height: 100%;">
+              </eox-map>`
+          }
 
         <style-editor-toolbar
           url="${this._geometryUrl}"
