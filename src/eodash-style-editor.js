@@ -143,9 +143,9 @@ export class EodashStyleEditor extends LitElement {
         [">", ["band", 1], 0],
         [
           "array",
-          ["/", ["band", 1], 2  ],
-          ["/", ["band", 2], 4],
-          ["/", ["band", 3], 4],
+          ["*", ["band", 1], 1],
+          ["*", ["band", 2], 1],
+          ["*", ["band", 3], 1],
           1
         ],
         ["color", 0, 0, 0, 0]
@@ -297,10 +297,8 @@ export class EodashStyleEditor extends LitElement {
         ${componentStyle}
       </style>
       <div class="eodash-style-editor">
-        ${this._isMapLoading && this._mapZoomExtent
-            ? html`<div 
-                id="map-loading"
-              >
+        ${this._isMapLoading
+            ? html`<div id="map-loading">
                 <div class="spinner">
                   <div class="double-bounce1"></div>
                   <div class="double-bounce2"></div>
@@ -349,11 +347,19 @@ export class EodashStyleEditor extends LitElement {
                 </span>
               </div>
               <div id="layercontrol" style="padding-top: 30px; width: 300px; height: 300px;">
-                <eox-layercontrol
-                  idProperty='id'
-                  titleProperty='title'
-                  .for="${this.renderRoot.querySelector("eox-map")}">
-                </eox-layercontrol>
+                ${this._isMapLoading
+                  ? html`<div>
+                    <div class="spinner">
+                      <div class="double-bounce1"></div>
+                      <div class="double-bounce2"></div>
+                    </div>
+                  </div>`
+                  : html`<eox-layercontrol
+                      idProperty='id'
+                      titleProperty='title'
+                      .for="${this.renderRoot.querySelector("eox-map")}">
+                    </eox-layercontrol>`
+                }
               </div>
             </div>
           </div>
