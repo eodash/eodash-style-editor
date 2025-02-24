@@ -135,6 +135,7 @@ export class EodashStyleEditor extends LitElement {
     this._isInitialized = false
     this._mapLayers = []
     this._mapZoomExtent = null
+    this._isLayerControlVisible = false;
 
     this._editorValue = {
       "stroke-color": "red",
@@ -164,6 +165,7 @@ export class EodashStyleEditor extends LitElement {
     _isInitialized: {state: true},
     _editorValue: {state: true},
     _isMapLoading: {state: true},
+    _isLayerControlVisible: {state: true},
   };
 
   _getFileFormat(url) {
@@ -243,6 +245,9 @@ export class EodashStyleEditor extends LitElement {
     }, 40)
 
     this._isMapLoading = false
+
+    // Give the map some time to load itself, so that EOxLayerControl can establish the link.
+    window.setTimeout(() => { this._isLayerControlVisible = true }, 40)
   }
 
   async onEditorInput() {
@@ -261,6 +266,7 @@ export class EodashStyleEditor extends LitElement {
 
     // 4. Rebuild map layers and set editor string if parsing succeeded.
     if (parseResult !== false) {
+      this._isLayerControlVisible = false
       // It is important to to only set the editor value only if the parsing was successful,
       // otherwise desynchronization sneaks in and messes with our formatting. Do not move.
       this._editorValue = parseResult
@@ -347,18 +353,18 @@ export class EodashStyleEditor extends LitElement {
                 </span>
               </div>
               <div id="layercontrol" style="padding-top: 30px; width: 300px; height: 300px;">
-                ${this._isMapLoading
-                  ? html`<div>
+                ${this._isLayerControlVisible
+                  ? html`<eox-layercontrol
+                    idProperty='id'
+                    titleProperty='title'
+                    .for="${this.renderRoot.querySelector("eox-map")}">
+                  </eox-layercontrol>`
+                  : html`<div>
                     <div class="spinner">
                       <div class="double-bounce1"></div>
                       <div class="double-bounce2"></div>
                     </div>
                   </div>`
-                  : html`<eox-layercontrol
-                      idProperty='id'
-                      titleProperty='title'
-                      .for="${this.renderRoot.querySelector("eox-map")}">
-                    </eox-layercontrol>`
                 }
               </div>
             </div>
