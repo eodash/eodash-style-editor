@@ -156,16 +156,7 @@ export class EodashStyleEditor extends LitElement {
     this._url = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/36/Q/WD/2020/7/S2A_36QWD_20200701_0_L2A/TCI.tif"
   }
 
-  async firstUpdated() {
-    this.#debounceUpdateMarkdown = _debounce((e) => {
-      if (e.detail) {
-        this.markdown = e.detail.Story;
-        this.requestUpdate();
-      }
-    }, 300);
-  }
-
-  #debounceUpdateMarkdown = null
+  #debouncedEditorFn = null
 
   static properties = {
     // Reactive internal state
@@ -266,6 +257,8 @@ export class EodashStyleEditor extends LitElement {
 
   firstUpdated() {
     if (!this._isInitialized) {
+      this.#debouncedEditorFn = _debounce(() => { this.onEditorInput() }, 500)
+
       this._buildMapLayers({shouldBoundsUpdate: true})
       this._isInitialized = true
     }
@@ -282,7 +275,7 @@ export class EodashStyleEditor extends LitElement {
           .editors["root.code"]["ace_editor_instance"]
           .textInput
           .getElement()
-          .addEventListener("input", (_e) => this.onEditorInput())
+          .addEventListener("input", this.#debouncedEditorFn)
     }, 100)
   }
 
