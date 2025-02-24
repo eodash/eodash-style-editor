@@ -1,9 +1,6 @@
 import { LitElement, css, html } from "lit"
-import { fromUrl } from "geotiff"
 import stringify from "json-stringify-pretty-compact"
-
-import { deserialize as deserializeFgb } from 'flatgeobuf/lib/mjs/geojson.js'
-import proj4 from "proj4"
+import _debounce from "lodash.debounce"
 
 import "@eox/layout"
 import "@eox/map"
@@ -12,6 +9,8 @@ import "@eox/map/dist/eox-map-advanced-layers-and-sources.js"
 import "@eox/jsonform"
 
 import "./components/toolbar/toolbar"
+import { getGeotiffExtent } from "./helpers/geotiff"
+import { getGeojsonExtent } from "./helpers/geojson"
 
 import "./fonts/IBMPlexMono-Regular.ttf"
 
@@ -19,7 +18,7 @@ import componentStyle from "./eodash-style-editor.css?inline"
 
 //import exampleStyleDef from "./example-style.json?inline"
 
-const maxEditorHeight = 360
+const maxEditorHeight = 300
 
 const jsonFormConfig = {
   "type":"object",
@@ -52,7 +51,7 @@ function createFgbConfig(url) {
       },
       "source": {
         "type": "FlatGeoBuf",
-        "url": "https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb"
+        "url": url,
       }
     },
     {
@@ -137,7 +136,7 @@ export class EodashStyleEditor extends LitElement {
     this._mapZoomExtent = null
     this._isLayerControlVisible = false;
 
-    this._editorValue = {
+    this._style = {
       "stroke-color": "red",
       "color": [
         "case",
@@ -154,8 +153,19 @@ export class EodashStyleEditor extends LitElement {
     }
 
     this._isMapLoading = false;
-    this._geometryUrl = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/36/Q/WD/2020/7/S2A_36QWD_20200701_0_L2A/TCI.tif"
+    this._url = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/36/Q/WD/2020/7/S2A_36QWD_20200701_0_L2A/TCI.tif"
   }
+
+  async firstUpdated() {
+    this.#debounceUpdateMarkdown = _debounce((e) => {
+      if (e.detail) {
+        this.markdown = e.detail.Story;
+        this.requestUpdate();
+      }
+    }, 300);
+  }
+
+  #debounceUpdateMarkdown = null
 
   static properties = {
     // Reactive internal state
@@ -163,7 +173,7 @@ export class EodashStyleEditor extends LitElement {
     _mapZoomExtent: {state: true},
     _geometryUrl: {state: true},
     _isInitialized: {state: true},
-    _editorValue: {state: true},
+    _style: {state: true},
     _isMapLoading: {state: true},
     _isLayerControlVisible: {state: true},
   };
@@ -178,49 +188,21 @@ export class EodashStyleEditor extends LitElement {
   async _buildMapLayers(options)  {
     this._isMapLoading = true
     this._isLayerControlVisible = false
-    console.log('_isMapLoading == true')
+
     var layers = []
 
-    console.log("Generating map layers")
-    const inputFormat = this._getFileFormat(this._geometryUrl)
+    const inputFormat = this._getFileFormat(this._url)
 
     console.log(`shouldBoundsUpdate: ${options.shouldBoundsUpdate}`)
 
     switch (inputFormat) {
       case "fgb":
-        console.log("Fetching and parsing FGB data")
-        // Fetch and parse FGB data
-        const response = await fetch(this._geometryUrl)
-        const buffer = await response.arrayBuffer()
-        const features = deserializeFgb(new Uint8Array(buffer))
-
-        console.log(features)
-
-        this._mapZoomExtent = calculateGeoJsonExtent2(features)
-        console.log(this._mapZoomExtent)
-        console.log(calculateGeoJsonExtent(features))
-        //console.log(getFgbInfo(this._geometryUrl))
-        layers = createFgbConfig(
-          this._geometryUrl,
-          this._editorValue
-        )
+        this._mapZoomExtent = await getGeojsonExtent(this._url)
+        layers = createFgbConfig(this._url, this._style)
         break
       case "tif":
-        const tiffInfo = await getGeoTiffCenterAndZoom(
-          this._geometryUrl,
-          options.shouldBoundsUpdate,
-        )
-
-        if (options.shouldBoundsUpdate) {
-          this._mapZoomExtent = tiffInfo.extent;
-          console.log(this._mapZoomExtent)
-        }
-
-        console.log(this._mapZoomExtent)
-        layers = createGeoTiffConfig(
-          this._geometryUrl,
-          this._editorValue
-        )
+        this._mapZoomExtent = await getGeotiffExtent(this._url)
+        layers = createGeoTiffConfig(this._url, this._style)
         break
       default:
         console.warn("File format not supported. Please use FGB, GeoTiff or COG files.")
@@ -233,18 +215,13 @@ export class EodashStyleEditor extends LitElement {
     //       the style object.
     layers.forEach((layer) => {
       if (layer.type == "Vector" || layer.type == "WebGLTile") {
-        //console.log(`${layer.type}`)
-        layer.style = this._editorValue
+        layer.style = this._style
       }
 
-      layer.opacity = 0.9
+      layer.opacity = 1.0
     })
 
-    const map = this.renderRoot.querySelector('eox-map')
-
     this._mapLayers = layers
-
-    console.log(this._mapLayers)
 
     window.setTimeout(() => {
       this.renderRoot
@@ -258,7 +235,7 @@ export class EodashStyleEditor extends LitElement {
 
     this._isMapLoading = false
 
-    // Give the map some time to load itself, so that EOxLayerControl can establish the link.
+    // Give the map some time to load, so that EOxLayerControl can establish the link.
     window.setTimeout(() => { this._isLayerControlVisible = true }, 40)
   }
 
@@ -281,7 +258,7 @@ export class EodashStyleEditor extends LitElement {
       this._isLayerControlVisible = false
       // It is important to to only set the editor value only if the parsing was successful,
       // otherwise desynchronization sneaks in and messes with our formatting. Do not move.
-      this._editorValue = parseResult
+      this._style = parseResult
       // Rebuild map layers
       await this._buildMapLayers({shouldBoundsUpdate: false})
     }
@@ -331,9 +308,9 @@ export class EodashStyleEditor extends LitElement {
           }
 
         <style-editor-toolbar
-          url="${this._geometryUrl}"
+          url="${this._url}"
           @submit="${(event) => {
-            this._geometryUrl = event.detail
+            this._url = event.detail
             this._buildMapLayers({shouldBoundsUpdate: true})
           }}"
         ></style-editor-toolbar>
@@ -351,7 +328,7 @@ export class EodashStyleEditor extends LitElement {
               </div>
               <eox-jsonform
                 .schema='${jsonFormConfig}'
-                .value='${{"code": stringify(this._editorValue, {}, 2)}}'
+                .value='${{"code": stringify(this._style, {}, 2)}}'
               ></eox-jsonform>
             </div>
 
@@ -402,141 +379,6 @@ export class EodashStyleEditor extends LitElement {
       }
     `
   }
-}
-
-async function getGeoTiffCenterAndZoom(url) {
-  //console.log("calculating Center and Zoom")
-  try {
-    // Load and parse the GeoTIFF file
-    const tiff = await fromUrl(url);
-    const image = await tiff.getImage();
-
-    // Get the image's bounding box
-    const origin = image.getOrigin();
-    const resolution = image.getResolution();
-    const extent = image.getBoundingBox();
-
-    // Extract the geo key number that we can use as an EPSG number identifier with
-    // proj4, so that we can dynamically detect the GeoTIFF projection and convert
-    // into the usual EPSG:3857 that `eox-map` uses.
-    //
-    // The string is very simple, just compose `EPSG:${geoKey}`.
-    let geoKey = image.geoKeys.ProjectedCSTypeGeoKey || image.geoKeys.GeographicTypeGeoKey || 3857;
-
-    // The `proj4` API only works with coordinate pairs, so we need to temporarily turn our
-    // bounding box array into two pairs of coordinates here for conversion.
-    const transformedExtent = [
-      proj4(`EPSG:${geoKey}`, 'EPSG:3857', [extent[0], extent[1]]),
-      proj4(`EPSG:${geoKey}`, 'EPSG:3857', [extent[2], extent[3]]),
-    ]
-
-    // Move the values from our two converted coordinates back into the linear
-    // arrangement we had before.
-    const finalExtent = [
-      transformedExtent[0][0],
-      transformedExtent[0][1],
-      transformedExtent[1][0],
-      transformedExtent[1][1],
-    ];
-
-    return {
-      origin,
-      resolution,
-      extent: finalExtent,
-    }
-  } catch (error) {
-    console.error('Error processing GeoTIFF:', error);
-    throw error;
-  }
-}
-
-function calculateGeoJsonExtent(featureCollection) {
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-
-  // Recursive coordinate extraction
-  function getCoordinates(coords) {
-    if (typeof coords[0] === 'number') {
-      return [coords];
-    }
-    return coords.flatMap(getCoordinates);
-  }
-
-  // Process all features
-  for (const feature of featureCollection.features) {
-    const geometry = feature.geometry;
-    if (!geometry) continue;
-
-    const coords = getCoordinates(geometry.coordinates);
-
-    for (const [x, y] of coords) {
-      if (x < minX) minX = x;
-      if (x > maxX) maxX = x;
-      if (y < minY) minY = y;
-      if (y > maxY) maxY = y;
-    }
-  }
-
-  // Return early if no valid coordinates found
-  if (minX === Infinity) return undefined;
-
-  // Convert geographic bounds to Web Mercator
-  const corners = [
-    [minX, minY],  // SW
-    [minX, maxY],  // NW
-    [maxX, minY],  // SE
-    [maxX, maxY]   // NE
-  ];
-
-  const transformed = corners.map(([x, y]) =>
-    proj4("EPSG:4326", "EPSG:3857", [x, y])
-  );
-
-  // Calculate transformed extent
-  return [
-    Math.min(...transformed.map(c => c[0])), // minX
-    Math.min(...transformed.map(c => c[1])), // minY
-    Math.max(...transformed.map(c => c[0])), // maxX
-    Math.max(...transformed.map(c => c[1]))  // maxY
-  ];
-}
-function calculateGeoJsonExtent2(featureCollection) {
-  let minX = Infinity;
-  let minY = Infinity;
-  let maxX = -Infinity;
-  let maxY = -Infinity;
-
-  // Process each coordinate recursively
-  function processCoordinate(coord) {
-    let [lon, lat] = coord;
-    let [x, y] = proj4('EPSG:4326', 'EPSG:3857', [lon, lat]);
-    if (x < minX) minX = x;
-    if (x > maxX) maxX = x;
-    if (y < minY) minY = y;
-    if (y > maxY) maxY = y;
-  }
-
-  // Function to traverse coordinates in any geometry type
-  function traverseCoordinates(coords) {
-    if (Array.isArray(coords[0])) {
-      coords.forEach(traverseCoordinates);
-    } else {
-      processCoordinate(coords);
-    }
-  }
-
-  // Iterate over all features
-  for (const feature of featureCollection.features) {
-    const geometry = feature.geometry;
-    if (!geometry || !geometry.coordinates) continue;
-    traverseCoordinates(geometry.coordinates);
-  }
-
-  if (minX === Infinity) return undefined;
-
-  return [minX, minY, maxX, maxY];
 }
 
 window.customElements.define('eodash-style-editor', EodashStyleEditor)
