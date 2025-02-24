@@ -3,7 +3,6 @@ import { fromUrl } from "geotiff"
 import stringify from "json-stringify-pretty-compact"
 
 import { deserialize as deserializeFgb } from 'flatgeobuf/lib/mjs/geojson.js'
-import geojsonExtent from '@mapbox/geojson-extent'
 import proj4 from "proj4"
 
 import "@eox/layout"
