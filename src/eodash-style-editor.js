@@ -2,7 +2,8 @@ import { LitElement, css, html } from "lit"
 import { fromUrl } from "geotiff"
 import stringify from "json-stringify-pretty-compact"
 
-import { geojson } from "flatgeobuf"
+import { deserialize as deserializeFgb } from 'flatgeobuf/lib/mjs/geojson.js'
+import geojsonExtent from '@mapbox/geojson-extent'
 import proj4 from "proj4"
 
 import "@eox/layout"
@@ -176,9 +177,10 @@ export class EodashStyleEditor extends LitElement {
   }
 
   async _buildMapLayers(options)  {
-    this._isMapLoading = true;
+    this._isMapLoading = true
+    this._isLayerControlVisible = false
     console.log('_isMapLoading == true')
-    var layers = [];
+    var layers = []
 
     console.log("Generating map layers")
     const inputFormat = this._getFileFormat(this._geometryUrl)
@@ -187,6 +189,17 @@ export class EodashStyleEditor extends LitElement {
 
     switch (inputFormat) {
       case "fgb":
+        console.log("Fetching and parsing FGB data")
+        // Fetch and parse FGB data
+        const response = await fetch(this._geometryUrl)
+        const buffer = await response.arrayBuffer()
+        const features = deserializeFgb(new Uint8Array(buffer))
+
+        console.log(features)
+
+        this._mapZoomExtent = calculateGeoJsonExtent2(features)
+        console.log(this._mapZoomExtent)
+        console.log(calculateGeoJsonExtent(features))
         //console.log(getFgbInfo(this._geometryUrl))
         layers = createFgbConfig(
           this._geometryUrl,
@@ -436,6 +449,95 @@ async function getGeoTiffCenterAndZoom(url) {
     console.error('Error processing GeoTIFF:', error);
     throw error;
   }
+}
+
+function calculateGeoJsonExtent(featureCollection) {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  // Recursive coordinate extraction
+  function getCoordinates(coords) {
+    if (typeof coords[0] === 'number') {
+      return [coords];
+    }
+    return coords.flatMap(getCoordinates);
+  }
+
+  // Process all features
+  for (const feature of featureCollection.features) {
+    const geometry = feature.geometry;
+    if (!geometry) continue;
+
+    const coords = getCoordinates(geometry.coordinates);
+
+    for (const [x, y] of coords) {
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+    }
+  }
+
+  // Return early if no valid coordinates found
+  if (minX === Infinity) return undefined;
+
+  // Convert geographic bounds to Web Mercator
+  const corners = [
+    [minX, minY],  // SW
+    [minX, maxY],  // NW
+    [maxX, minY],  // SE
+    [maxX, maxY]   // NE
+  ];
+
+  const transformed = corners.map(([x, y]) =>
+    proj4("EPSG:4326", "EPSG:3857", [x, y])
+  );
+
+  // Calculate transformed extent
+  return [
+    Math.min(...transformed.map(c => c[0])), // minX
+    Math.min(...transformed.map(c => c[1])), // minY
+    Math.max(...transformed.map(c => c[0])), // maxX
+    Math.max(...transformed.map(c => c[1]))  // maxY
+  ];
+}
+function calculateGeoJsonExtent2(featureCollection) {
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  // Process each coordinate recursively
+  function processCoordinate(coord) {
+    let [lon, lat] = coord;
+    let [x, y] = proj4('EPSG:4326', 'EPSG:3857', [lon, lat]);
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+
+  // Function to traverse coordinates in any geometry type
+  function traverseCoordinates(coords) {
+    if (Array.isArray(coords[0])) {
+      coords.forEach(traverseCoordinates);
+    } else {
+      processCoordinate(coords);
+    }
+  }
+
+  // Iterate over all features
+  for (const feature of featureCollection.features) {
+    const geometry = feature.geometry;
+    if (!geometry || !geometry.coordinates) continue;
+    traverseCoordinates(geometry.coordinates);
+  }
+
+  if (minX === Infinity) return undefined;
+
+  return [minX, minY, maxX, maxY];
 }
 
 window.customElements.define('eodash-style-editor', EodashStyleEditor)
