@@ -14,7 +14,7 @@ import { getGeojsonExtent } from "./helpers/geojson"
 
 import "./fonts/IBMPlexMono-Regular.ttf"
 
-import componentStyle from "./eodash-style-editor.css?inline"
+import componentStyle from "./styles/app.css?inline"
 
 //import exampleStyleDef from "./example-style.json?inline"
 
@@ -128,6 +128,9 @@ function tryParseJson(jsonString) {
  * @csspart button - The button
  */
 export class EodashStyleEditor extends LitElement {
+  // Disable shadow DOM so that we can use Tailwind
+  createRenderRoot() { return this; }
+
   constructor() {
     super()
 
@@ -230,9 +233,15 @@ export class EodashStyleEditor extends LitElement {
     window.setTimeout(() => { this._isLayerControlVisible = true }, 40)
   }
 
-  async onEditorInput() {
+  async onEditorInput(e) {
+    // When pressing Enter to create new line, the logic responds weirdly and immediately
+    // resets back to the previous state, effectively undoing the user's change.
+    //
+    // Here, we simply return early to prevent this from happening, basically skipping a bit.
+    if (e.key === "Enter") return
+
     // 1. Quit early if the map is currently already loading.
-    if (this._isMapLoading) return;
+    if (this._isMapLoading) return
 
     // 2. Retrieve the code the user has edited from the Ace Editor in `eox-jsonform`.
     const currentJSON = this.renderRoot
@@ -257,8 +266,9 @@ export class EodashStyleEditor extends LitElement {
 
   firstUpdated() {
     if (!this._isInitialized) {
-      this.#debouncedEditorFn = _debounce(() => { this.onEditorInput() }, 500)
+      this.#debouncedEditorFn = _debounce((e) => { this.onEditorInput(e) }, 650)
 
+      // Build the map config
       this._buildMapLayers({shouldBoundsUpdate: true})
       this._isInitialized = true
     }
@@ -275,8 +285,31 @@ export class EodashStyleEditor extends LitElement {
           .editors["root.code"]["ace_editor_instance"]
           .textInput
           .getElement()
-          .addEventListener("input", this.#debouncedEditorFn)
+          .addEventListener("keyup", this.#debouncedEditorFn)
     }, 100)
+  }
+
+  // Temporary function until I move the layer control box to a separate element.
+  get layerControl() {
+    return html`
+      <div class="card" style="max-width: 300px">
+        <!--<div class="editor-toolbar">
+          <span class="start">
+            <div class="icon-container editor">
+              <div class="icon layer-control"></div>
+            </div>
+            <h3 class="layers-title">Layers</h3>
+          </span>
+        </div>-->
+        <div id="layercontrol" style="padding-top: 0px; width: 300px; height: 300px;">
+          <eox-layercontrol
+            idProperty='id'
+            titleProperty='title'
+            .for="${this.renderRoot.querySelector("eox-map")}">
+          </eox-layercontrol>
+        </div>
+      </div>
+    `
   }
 
   render() {
@@ -286,19 +319,22 @@ export class EodashStyleEditor extends LitElement {
       </style>
       <div class="eodash-style-editor">
         ${this._isMapLoading
-            ? html`<div id="map-loading">
-                <div class="spinner">
-                  <div class="double-bounce1"></div>
-                  <div class="double-bounce2"></div>
-                </div>
-              </div>`
-            : html`<eox-map
-                id="map"
-                .layers='${this._mapLayers}'
-                .zoomExtent='${this._mapZoomExtent}'
-                style="width: 100%; height: 100%;">
-              </eox-map>`
-          }
+          ? html`<div id="style-editor-loader">
+            <div style="display: flex; width: 100%; height: 100%; justify-content: center; align-items: center">
+              <div class="trinity-rings-spinner" style="transform: scale(2)">
+                <div class="circle"></div>
+                <div class="circle"></div>
+                <div class="circle"></div>
+              </div>
+            </div>
+          </div>`
+          : html`<eox-map
+              id="map"
+              .layers='${this._mapLayers}'
+              .zoomExtent='${this._mapZoomExtent}'
+              style="width: 100%; height: 100%;">
+            </eox-map>`
+        }
 
         <style-editor-toolbar
           url="${this._url}"
@@ -325,31 +361,14 @@ export class EodashStyleEditor extends LitElement {
               ></eox-jsonform>
             </div>
 
-            <div class="card">
-              <div class="editor-toolbar">
-                <span class="start">
-                  <div class="icon-container editor">
-                    <div class="icon layer-control"></div>
-                  </div>
-                  <h3 class="layers-title">Layers</h3>
-                </span>
-              </div>
-              <div id="layercontrol" style="padding-top: 30px; width: 300px; height: 300px;">
-                ${this._isLayerControlVisible
-                  ? html`<eox-layercontrol
-                    idProperty='id'
-                    titleProperty='title'
-                    .for="${this.renderRoot.querySelector("eox-map")}">
-                  </eox-layercontrol>`
-                  : html`<div>
-                    <div class="spinner">
-                      <div class="double-bounce1"></div>
-                      <div class="double-bounce2"></div>
-                    </div>
-                  </div>`
-                }
-              </div>
-            </div>
+            ${
+              this._isLayerControlVisible
+                ? html`
+                    <!-- <div id="mapToolbar bg-red"></div> -->
+                    ${this.layerControl}
+                  `
+                : html``
+            }
           </div>
         </div>
       </div>
