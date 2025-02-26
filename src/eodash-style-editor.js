@@ -16,6 +16,8 @@ import "./fonts/IBMPlexMono-Regular.ttf"
 
 import componentStyle from "./styles/app.css?inline"
 
+import cerulean from "./cerulean_style.json?inline"
+
 //import exampleStyleDef from "./example-style.json?inline"
 
 const maxEditorHeight = 300
@@ -122,6 +124,40 @@ function tryParseJson(jsonString) {
 };
 
 /**
+ * updating the variables assigned in the layer style
+ * from the `styles.variables` property
+ * @param {Record<string,any>} styles
+ * @returns
+ */
+function updateVectorLayerStyle(styles) {
+  // pass back flat style if contained in config
+  let returnStyle = styles;
+  // Check if variables are defined and need to be "burned in" first
+  if ("variables" in styles) {
+    // stringify all the styles to be able to search quickly
+    let rawStyle = JSON.stringify(styles);
+    // extract updated variables
+    const { variables } = styles;
+    // loop through the variables keys
+    for (const key in variables) {
+      // ol styles expects numbers to be assigned as typeof number
+      if (typeof variables[key] === "number") {
+        //@ts-expect-error assigning number to string
+        rawStyle = rawStyle.replaceAll(`["var","${key}"]`, variables[key]);
+      } else {
+        // replace all styles variables set of the specific key with the variables value
+        rawStyle = rawStyle.replaceAll(
+          `["var","${key}"]`,
+          `"${variables[key]}"`,
+        );
+      }
+    }
+    returnStyle = JSON.parse(rawStyle);
+  }
+  return returnStyle;
+}
+
+/**
  * An instance of the `eodash` style editor for geospatial features on a map.
  *
  * @slot - This element has a slot
@@ -139,7 +175,7 @@ export class EodashStyleEditor extends LitElement {
     this._mapZoomExtent = null
     this._isLayerControlVisible = false;
 
-    this._style = {
+    /*this._style = {
       "stroke-color": "red",
       "color": [
         "case",
@@ -153,10 +189,13 @@ export class EodashStyleEditor extends LitElement {
         ],
         ["color", 0, 0, 0, 0]
       ]
-    }
+    }*/
+
+    this._style = cerulean
 
     this._isMapLoading = false;
-    this._url = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/36/Q/WD/2020/7/S2A_36QWD_20200701_0_L2A/TCI.tif"
+    // this._url = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/36/Q/WD/2020/7/S2A_36QWD_20200701_0_L2A/TCI.tif"
+    this._url = "https://obs.eu-nl.otc.t-systems.com/gtif-data-cerulean1/output-polaris/202501200900_SouthEast_RIC-processed.fgb"
   }
 
   #debouncedEditorFn = null
@@ -208,8 +247,14 @@ export class EodashStyleEditor extends LitElement {
     //       app-breaking exception in the `eox-map` instance when the map is handling
     //       the style object.
     layers.forEach((layer) => {
-      if (layer.type == "Vector" || layer.type == "WebGLTile") {
+      if (layer.type == "WebGLTile") {
         layer.style = this._style
+      } else if (layer.type == "Vector") {
+        layer.style = updateVectorLayerStyle(this._style)
+        layer.properties.layerConfig = {
+          schema: this._style.jsonform,
+          style: updateVectorLayerStyle(this._style),
+        }
       }
 
       layer.opacity = 1.0
