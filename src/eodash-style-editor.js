@@ -1,6 +1,7 @@
 import { LitElement, css, html } from "lit"
 import stringify from "json-stringify-pretty-compact"
 import _debounce from "lodash.debounce"
+import mustache from "mustache"
 
 import "@eox/layout"
 import "@eox/map"
@@ -21,6 +22,31 @@ import cerulean from "./cerulean_style.json?inline"
 //import exampleStyleDef from "./example-style.json?inline"
 
 const maxEditorHeight = 300
+
+const tooltipPropertyTransform = (param) => {
+  /** @type {typeof tooltipProperties.value} */
+  const updatedProperties = JSON.parse(
+    mustache.render(JSON.stringify(tooltipProperties.value), {
+      ...(layerControlFormValue.value ?? {}),
+    }),
+  );
+
+  const tooltipProp = updatedProperties?.find((prop) => prop.id === param.key);
+  if (!tooltipProp) {
+    return undefined;
+  }
+  if (typeof param.value === "object") {
+    param.value = JSON.stringify(param.value);
+  }
+  if (!isNaN(Number(param.value))) {
+    param.value = Number(param.value).toFixed(4).toString();
+  }
+
+  return {
+    key: tooltipProp.title || tooltipProp.id,
+    value: param.value + " " + (tooltipProp.appendix || ""),
+  };
+};
 
 const jsonFormConfig = {
   "type":"object",
@@ -49,12 +75,24 @@ function createFgbConfig(url) {
       "type": "Vector",
       "properties": {
         "id": "FlatGeoBufLayer",
-        "minZoom": 12
       },
       "source": {
         "type": "FlatGeoBuf",
         "url": url,
-      }
+      },
+      "interactions":[
+        {
+          "type":"select",
+          "options":{
+              "id":"selectInteraction",
+              "condition":"pointermove",
+              "style":{
+                "stroke-color":"white",
+                "stroke-width":3
+              }
+          }
+        }
+    ]
     },
     {
       "type": "Tile",
@@ -175,9 +213,9 @@ export class EodashStyleEditor extends LitElement {
     this._mapZoomExtent = null
     this._isLayerControlVisible = false;
 
-    /*this._style = {
+    this._style = {
       "stroke-color": "red",
-      "color": [
+      /*"color": [
         "case",
         [">", ["band", 1], 0],
         [
@@ -188,8 +226,8 @@ export class EodashStyleEditor extends LitElement {
           1
         ],
         ["color", 0, 0, 0, 0]
-      ]
-    }*/
+      ]*/
+    }
 
     this._style = cerulean
 
@@ -377,7 +415,11 @@ export class EodashStyleEditor extends LitElement {
               id="map"
               .layers='${this._mapLayers}'
               .zoomExtent='${this._mapZoomExtent}'
-              style="width: 100%; height: 100%;">
+              style="width: 100%; height: 100%;"
+            >
+              <eox-map-tooltip
+                .propertyTransform="${tooltipPropertyTransform}"
+              />
             </eox-map>`
         }
 
