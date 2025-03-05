@@ -23,31 +23,6 @@ import cerulean from "./cerulean_style.json?inline"
 
 const maxEditorHeight = 300
 
-const tooltipPropertyTransform = (param) => {
-  /** @type {typeof tooltipProperties.value} */
-  const updatedProperties = JSON.parse(
-    mustache.render(JSON.stringify(tooltipProperties.value), {
-      ...(layerControlFormValue.value ?? {}),
-    }),
-  );
-
-  const tooltipProp = updatedProperties?.find((prop) => prop.id === param.key);
-  if (!tooltipProp) {
-    return undefined;
-  }
-  if (typeof param.value === "object") {
-    param.value = JSON.stringify(param.value);
-  }
-  if (!isNaN(Number(param.value))) {
-    param.value = Number(param.value).toFixed(4).toString();
-  }
-
-  return {
-    key: tooltipProp.title || tooltipProp.id,
-    value: param.value + " " + (tooltipProp.appendix || ""),
-  };
-};
-
 const jsonFormConfig = {
   "type":"object",
   "properties":{
@@ -249,6 +224,40 @@ export class EodashStyleEditor extends LitElement {
     _isLayerControlVisible: {state: true},
   };
 
+  _tooltipPropertyTransform = (param) => {
+    const templateContext = {
+      ...this._layerControlFormValue,
+      ...param.properties
+    };
+
+    try {
+      const tooltipConfig = JSON.parse(
+        mustache.render(
+          JSON.stringify(this._style.tooltip),
+          templateContext
+        )
+      );
+
+      const tooltipProp = tooltipConfig.find(p => p.id === param.key);
+      if (!tooltipProp) return null;
+
+      let value = param.value;
+      if (typeof value === 'object') {
+        value = JSON.stringify(value);
+      } else if (typeof value === 'number') {
+        value = value.toFixed(4);
+      }
+
+      return {
+        key: mustache.render(tooltipProp.title, templateContext),
+        value: `${value} ${mustache.render(tooltipProp.appendix || '', templateContext)}`.trim()
+      };
+    } catch (e) {
+      console.error('Tooltip transformation error:', e);
+      return null;
+    }
+  }
+
   _getFileFormat(url) {
     if (url.includes(".tif")) { return "tif" }
     if (url.includes(".fgb")) { return "fgb" }
@@ -388,7 +397,9 @@ export class EodashStyleEditor extends LitElement {
           <eox-layercontrol
             idProperty='id'
             titleProperty='title'
-            .for="${this.renderRoot.querySelector("eox-map")}">
+            .for="${this.renderRoot.querySelector("eox-map")}"
+            @layerConfig:change="${(e) => { console.log(e.detail) }}"
+          >
           </eox-layercontrol>
         </div>
       </div>
@@ -418,7 +429,7 @@ export class EodashStyleEditor extends LitElement {
               style="width: 100%; height: 100%;"
             >
               <eox-map-tooltip
-                .propertyTransform="${tooltipPropertyTransform}"
+                .propertyTransform="${this._tooltipPropertyTransform}"
               />
             </eox-map>`
         }
