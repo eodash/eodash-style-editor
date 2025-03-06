@@ -58,7 +58,7 @@ export class StyleEditorToolbar extends LitElement {
       <div class="style-editor-toolbar">
         <div class="flex">
           <div id="logo">
-            <img src="/EOX_Eye.svg" width="32" />
+            <img src="/eodash-style-editor/EOX_Eye.svg" width="32" />
           </div>
           <input
             id="geometry-url-input"
