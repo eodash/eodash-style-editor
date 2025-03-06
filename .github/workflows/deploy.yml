@@ -16,10 +16,10 @@ jobs:
       - run: |
           npm install
           npm run build -- --base="/${{ github.event.repository.name }}/"
-          cp .eodash-style-editor/dist/index.html .eodash-style-editor/dist/404.html
+          cp ./dist/index.html ./dist/404.html
           touch .eodash-style-editor/dist/.nojekyll
       - uses: JamesIves/github-pages-deploy-action@v4
         with:
-          folder: ./.eodash-style-editor/dist/
+          folder: ./dist/
           branch: gh-pages
           clean-exclude: pr-preview
