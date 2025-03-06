@@ -207,8 +207,10 @@ export class EodashStyleEditor extends LitElement {
     this._style = cerulean
 
     this._isMapLoading = false;
+    this._isMapLoading = false;
     // this._url = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/36/Q/WD/2020/7/S2A_36QWD_20200701_0_L2A/TCI.tif"
     this._url = "https://obs.eu-nl.otc.t-systems.com/gtif-data-cerulean1/output-polaris/202501200900_SouthEast_RIC-processed.fgb"
+    this._layerControlFormValue = {}
   }
 
   #debouncedEditorFn = null
@@ -222,6 +224,8 @@ export class EodashStyleEditor extends LitElement {
     _style: {state: true},
     _isMapLoading: {state: true},
     _isLayerControlVisible: {state: true},
+    _layerControlFormValue: { state: true },
+    _shouldUpdate: { state: true },
   };
 
   _tooltipPropertyTransform = (param) => {
@@ -325,6 +329,37 @@ export class EodashStyleEditor extends LitElement {
     window.setTimeout(() => { this._isLayerControlVisible = true }, 40)
   }
 
+  _updateLayerStyles() {
+    console.log("updating styles")
+    if (!this._mapLayers) return
+
+    const eoxMap = this.renderRoot.querySelector('eox-map')
+    //const layerConfig = this.renderRoot.querySelector('eox-layercontrol')
+
+    console.log(eoxMap.map.getLayers().getArray())
+
+    // Create a new array with updated styles but same layer references
+    const newLayers = this._mapLayers.map(layer => {
+      const updatedStyle = updateVectorLayerStyle(this._style)
+      if (layer.type === "Vector") {
+        const olLayer = eoxMap.map.getLayers().getArray().find(l => l.get('id') === layer.properties.id)
+        if (olLayer) {
+          console.log("Updating style for layer")
+          olLayer.setStyle(updatedStyle)
+        }
+      }
+      if (layer.type === "Vector" || layer.type === "WebGLTile") {
+        return {
+          ...layer,
+          style: updatedStyle,
+        }
+      }
+      return layer
+    });
+    this._mapLayers = [...newLayers] // Trigger Lit update with new array reference
+
+  }
+
   async onEditorInput(e) {
     // When pressing Enter to create new line, the logic responds weirdly and immediately
     // resets back to the previous state, effectively undoing the user's change.
@@ -352,7 +387,7 @@ export class EodashStyleEditor extends LitElement {
       // otherwise desynchronization sneaks in and messes with our formatting. Do not move.
       this._style = parseResult
       // Rebuild map layers
-      await this._buildMapLayers({shouldBoundsUpdate: false})
+      this._updateLayerStyles()
     }
   }
 
@@ -397,8 +432,9 @@ export class EodashStyleEditor extends LitElement {
           <eox-layercontrol
             idProperty='id'
             titleProperty='title'
+            .tools='${["config", "legend"]}'
             .for="${this.renderRoot.querySelector("eox-map")}"
-            @layerConfig:change="${(e) => { console.log(e.detail) }}"
+            @layerConfig:change="${() => {}}"
           >
           </eox-layercontrol>
         </div>
