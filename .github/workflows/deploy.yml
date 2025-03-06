@@ -1,0 +1,25 @@
+# .github/workflows/deploy.yml
+name: Deploy main branch
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@v3
+      - run: |
+          npm install
+          npm run build -- --base="/${{ github.event.repository.name }}/"
+          cp .eodash-style-editor/dist/index.html .eodash-style-editor/dist/404.html
+          touch .eodash-style-editor/dist/.nojekyll
+      - uses: JamesIves/github-pages-deploy-action@v4
+        with:
+          folder: ./.eodash-style-editor/dist/
+          branch: gh-pages
+          clean-exclude: pr-preview
