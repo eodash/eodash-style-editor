@@ -17,7 +17,7 @@ jobs:
           npm install
           npm run build -- --base="/${{ github.event.repository.name }}/"
           cp ./dist/index.html ./dist/404.html
-          touch .eodash-style-editor/dist/.nojekyll
+          touch ./dist/.nojekyll
       - uses: JamesIves/github-pages-deploy-action@v4
         with:
           folder: ./dist/
