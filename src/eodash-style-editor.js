@@ -8,6 +8,7 @@ import "@eox/map"
 import "@eox/layercontrol"
 import "@eox/map/dist/eox-map-advanced-layers-and-sources.js"
 import "@eox/jsonform"
+import "color-legend-element"
 
 import "./components/toolbar/toolbar"
 import { getGeotiffExtent } from "./helpers/geotiff"
@@ -301,10 +302,10 @@ export class EodashStyleEditor extends LitElement {
       if (layer.type == "WebGLTile") {
         layer.style = this._style
       } else if (layer.type == "Vector") {
-        layer.style = updateVectorLayerStyle(this._style)
         layer.properties.layerConfig = {
           schema: this._style.jsonform,
-          style: updateVectorLayerStyle(this._style),
+          style:  this._style,
+          legend: this._style.legend,
         }
       }
 
@@ -419,7 +420,7 @@ export class EodashStyleEditor extends LitElement {
   // Temporary function until I move the layer control box to a separate element.
   get layerControl() {
     return html`
-      <div class="card" style="max-width: 300px">
+      <div class="card scroll" style="max-width: 300px">
         <!--<div class="editor-toolbar">
           <span class="start">
             <div class="icon-container editor">
