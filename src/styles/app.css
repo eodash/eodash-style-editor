@@ -9,6 +9,13 @@
   max-height: 100vh;
 }
 
+#layercontrol {
+  position: fixed;
+  right: 20px;
+  top: 90px;
+  z-index: 100;
+}
+
 #mapToolbar {
   position: fixed;
   right: 20px;
@@ -50,7 +57,7 @@ eox-map {
   left: 0;
   top: 70px;
   width: 600px;
-  height: 100vh;
+  height: calc(100vh - 80px);
   padding: 20px;
 }
 
@@ -143,13 +150,17 @@ eox-map {
   padding: 9px;
   margin-bottom: 16px;
   border-radius: 12px;
-  width: 460px;
+  width: 500px;
   min-height: 300px;
   background: #fffa;
   box-shadow: 0px 3px 5px 0px rgba(0,0,0,0.17);
   backdrop-filter: blur(10px);
   overflow-x: hidden;
   overflow-y: hidden;
+}
+
+.card.editor {
+  height: calc(100vh - 200px);
 }
 
 .card.scroll {
@@ -173,6 +184,7 @@ eox-jsonform {
   left: 0;
   top: 40px;
   right: 0;
+  bottom: 40px;
   height: 300px;
   max-height: 300px;
 }

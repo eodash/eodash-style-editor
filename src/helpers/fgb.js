@@ -1,7 +1,12 @@
+import { deserialize } from "flatgeobuf/lib/mjs/geojson.js"
 import proj4 from "proj4"
 
-async function getGeojsonExtent(featureCollection) {
-  console.log(featureCollection);
+async function getFgbExtent(url) {
+  console.log(url);
+  const response = await fetch(url)
+  const buffer = await response.arrayBuffer()
+  const featureCollection = deserialize(new Uint8Array(buffer))
+
   let minX = Infinity;
   let minY = Infinity;
   let maxX = -Infinity;
@@ -41,28 +46,14 @@ async function getGeojsonExtent(featureCollection) {
 function buildGeojsonConfig(url) {
   return [
     {
-      "type":"Vector",
-      "background":"#1366dd",
-      "properties":{
-        "id":"regions"
+      "type": "Vector",
+      "properties": {
+        "id": "FlatGeoBufLayer",
+        "minZoom": 12
       },
-      "source":{
-        "type":"Vector",
-        "url": url,
-        "format":"GeoJSON",
-        "attributions":"Regions: @ openlayers.org"
-      },
-      "style":{
-        "stroke-color":"#232323",
-        "stroke-width":1,
-        "fill-color":[
-          "string",
-          [
-            "get",
-            "COLOR"
-          ],
-          "#eee"
-        ]
+      "source": {
+        "type": "FlatGeoBuf",
+        "url": "https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb"
       }
     },
     {
@@ -78,6 +69,6 @@ function buildGeojsonConfig(url) {
 }
 
 export {
-  getGeojsonExtent,
+  getFgbExtent,
   buildGeojsonConfig,
 }

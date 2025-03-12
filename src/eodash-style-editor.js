@@ -11,8 +11,10 @@ import "@eox/jsonform"
 import "color-legend-element"
 
 import "./components/toolbar/toolbar"
+
 import { getGeotiffExtent } from "./helpers/geotiff"
-import { getGeojsonExtent } from "./helpers/geojson"
+import { getFgbExtent } from "./helpers/fgb"
+import { getGeojsonExtent, buildGeojsonConfig } from "./helpers/geojson"
 
 import "./fonts/IBMPlexMono-Regular.ttf"
 
@@ -22,7 +24,7 @@ import cerulean from "./cerulean_style.json?inline"
 
 //import exampleStyleDef from "./example-style.json?inline"
 
-const maxEditorHeight = 300
+const maxEditorHeight = window.innerHeight
 
 const jsonFormConfig = {
   "type":"object",
@@ -37,10 +39,25 @@ const jsonFormConfig = {
               "tabSize":2,
               "fontSize":14,
               "fontFamily":"'IBM Plex Mono'",
-              "maxPixelHeight": maxEditorHeight,
+              "maxPixelHeight": window.innerHeight - 250,
+              "maxLines": 600,
            }
         }
      }
+  }
+}
+
+function parseJsonDataUri(dataUri) {
+  try {
+      // Split the data URI to get the encoded part
+      const encodedData = dataUri.split(',')[1];
+      // Decode the URI component to convert %xx characters
+      const decodedData = decodeURIComponent(encodedData);
+      // Parse the JSON string into an object
+      return JSON.parse(decodedData);
+  } catch (error) {
+      console.error('Error parsing GeoJSON data URI:', error);
+      throw error; // Re-throw or handle as needed
   }
 }
 
@@ -191,6 +208,8 @@ export class EodashStyleEditor extends LitElement {
 
     this._style = {
       "stroke-color": "red",
+      "radius": 5,
+      "fill": "red",
       /*"color": [
         "case",
         [">", ["band", 1], 0],
@@ -207,8 +226,7 @@ export class EodashStyleEditor extends LitElement {
 
     this._style = cerulean
 
-    this._isMapLoading = false;
-    this._isMapLoading = false;
+    this._isMapLoading = false
     // this._url = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/36/Q/WD/2020/7/S2A_36QWD_20200701_0_L2A/TCI.tif"
     this._url = "https://obs.eu-nl.otc.t-systems.com/gtif-data-cerulean1/output-polaris/202501200900_SouthEast_RIC-processed.fgb"
     this._layerControlFormValue = {}
@@ -266,6 +284,7 @@ export class EodashStyleEditor extends LitElement {
   _getFileFormat(url) {
     if (url.includes(".tif")) { return "tif" }
     if (url.includes(".fgb")) { return "fgb" }
+    if (url.includes("data:,")) { return "geojson" }
 
     return "unknown"
   }
@@ -282,8 +301,15 @@ export class EodashStyleEditor extends LitElement {
 
     switch (inputFormat) {
       case "fgb":
-        this._mapZoomExtent = await getGeojsonExtent(this._url)
+        this._mapZoomExtent = await getFgbExtent(this._url)
         layers = createFgbConfig(this._url, this._style)
+        break
+      case "geojson":
+        // "Fetch" data URI
+        const fetchRes = await fetch(this._url)
+        const featureCollection = await fetchRes.json()
+        this._mapZoomExtent = await getGeojsonExtent(featureCollection)
+        layers = buildGeojsonConfig(this._url)
         break
       case "tif":
         this._mapZoomExtent = await getGeotiffExtent(this._url)
@@ -420,16 +446,8 @@ export class EodashStyleEditor extends LitElement {
   // Temporary function until I move the layer control box to a separate element.
   get layerControl() {
     return html`
-      <div class="card scroll" style="max-width: 300px">
-        <!--<div class="editor-toolbar">
-          <span class="start">
-            <div class="icon-container editor">
-              <div class="icon layer-control"></div>
-            </div>
-            <h3 class="layers-title">Layers</h3>
-          </span>
-        </div>-->
-        <div id="layercontrol" style="padding-top: 0px; width: 300px; height: 300px;">
+      <div id="layercontrol" class="card scroll" style="max-width: 300px">
+        <div style="width: 300px; height: 300px;">
           <eox-layercontrol
             idProperty='id'
             titleProperty='title'
@@ -479,9 +497,17 @@ export class EodashStyleEditor extends LitElement {
           }}"
         ></style-editor-toolbar>
 
+        ${
+          this._isLayerControlVisible
+            ? html`
+                ${this.layerControl}
+              `
+            : html``
+        }
+
         <div class="sidebar">
           <div class="sidebar-items">
-            <div class="card">
+            <div class="card editor">
               <div class="editor-toolbar">
                 <span class="start">
                   <div class="icon-container editor">
@@ -495,15 +521,6 @@ export class EodashStyleEditor extends LitElement {
                 .value='${{"code": stringify(this._style, {}, 2)}}'
               ></eox-jsonform>
             </div>
-
-            ${
-              this._isLayerControlVisible
-                ? html`
-                    <!-- <div id="mapToolbar bg-red"></div> -->
-                    ${this.layerControl}
-                  `
-                : html``
-            }
           </div>
         </div>
       </div>
