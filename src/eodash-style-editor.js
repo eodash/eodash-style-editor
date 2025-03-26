@@ -348,7 +348,6 @@ export class EodashStyleEditor extends LitElement {
       return layer
     });
     this._mapLayers = [...newLayers] // Trigger Lit update with new array reference
-
   }
 
   async onEditorInput(e) {
@@ -373,7 +372,6 @@ export class EodashStyleEditor extends LitElement {
 
     // 4. Rebuild map layers and set editor string if parsing succeeded.
     if (parseResult !== false) {
-      this._isLayerControlVisible = false
       // It is important to to only set the editor value only if the parsing was successful,
       // otherwise desynchronization sneaks in and messes with our formatting. Do not move.
       this._style = parseResult
