@@ -293,9 +293,9 @@ export class EodashStyleEditor extends LitElement {
       } else if (layer.type == "Vector") {
         console.log(this._style)
         layer.properties.layerConfig = {
-          schema: this._style.jsonform ? this._style.jsonform : undefined,
+          schema: this._style.jsonform,
           style:  this._style,
-          legend: this._style.legend ? this._style.legend : undefined,
+          legend: this._style.legend,
         }
       }
 
