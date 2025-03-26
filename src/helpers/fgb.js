@@ -43,23 +43,36 @@ async function getFgbExtent(url) {
   return [minX, minY, maxX, maxY];
 }
 
-function buildGeojsonConfig(url) {
+function buildFgbConfig(url) {
   return [
     {
       "type": "Vector",
       "properties": {
         "id": "FlatGeoBufLayer",
-        "minZoom": 12
+        "title": "Vector Data",
       },
       "source": {
         "type": "FlatGeoBuf",
-        "url": "https://eox-gtif-public.s3.eu-central-1.amazonaws.com/admin_borders/STATISTIK_AUSTRIA_GEM_20220101.fgb"
-      }
+        "url": url,
+      },
+      "interactions":[
+        {
+          "type":"select",
+          "options":{
+              "id":"selectInteraction",
+              "condition":"pointermove",
+              "style":{
+                "stroke-color":"white",
+                "stroke-width":3
+              }
+          }
+        }
+    ]
     },
     {
       "type": "Tile",
       "properties": {
-        "id": "customId"
+        "title": "OpenStreetMap",
       },
       "source": {
         "type": "OSM"
@@ -70,5 +83,5 @@ function buildGeojsonConfig(url) {
 
 export {
   getFgbExtent,
-  buildGeojsonConfig,
+  buildFgbConfig,
 }

@@ -13,10 +13,11 @@ import "color-legend-element"
 import "./components/toolbar/toolbar"
 
 import { getGeotiffExtent } from "./helpers/geotiff"
-import { getFgbExtent } from "./helpers/fgb"
+import { getFgbExtent, buildFgbConfig } from "./helpers/fgb"
 import { getGeojsonExtent, buildGeojsonConfig } from "./helpers/geojson"
 
 import "./fonts/IBMPlexMono-Regular.ttf"
+import eoxUiStyle from "@eox/ui/style.css?inline"
 
 import componentStyle from "./styles/app.css?inline"
 
@@ -59,44 +60,6 @@ function parseJsonDataUri(dataUri) {
       console.error('Error parsing GeoJSON data URI:', error);
       throw error; // Re-throw or handle as needed
   }
-}
-
-/* Create a map config for Flat Geo Buf sources */
-function createFgbConfig(url) {
-  return [
-    {
-      "type": "Vector",
-      "properties": {
-        "id": "FlatGeoBufLayer",
-      },
-      "source": {
-        "type": "FlatGeoBuf",
-        "url": url,
-      },
-      "interactions":[
-        {
-          "type":"select",
-          "options":{
-              "id":"selectInteraction",
-              "condition":"pointermove",
-              "style":{
-                "stroke-color":"white",
-                "stroke-width":3
-              }
-          }
-        }
-    ]
-    },
-    {
-      "type": "Tile",
-      "properties": {
-        "id": "customId"
-      },
-      "source": {
-        "type": "OSM"
-      }
-    }
-  ];
 }
 
 /* Create a map config for Flat Geo Buf sources */
@@ -215,7 +178,7 @@ export class EodashStyleEditor extends LitElement {
         [">", ["band", 1], 0],
         [
           "array",
-          ["*", ["band", 1], 1],
+          ["*", ["band", 1], 0.4],
           ["*", ["band", 2], 1],
           ["*", ["band", 3], 1],
           1
@@ -302,7 +265,7 @@ export class EodashStyleEditor extends LitElement {
     switch (inputFormat) {
       case "fgb":
         this._mapZoomExtent = await getFgbExtent(this._url)
-        layers = createFgbConfig(this._url, this._style)
+        layers = buildFgbConfig(this._url, this._style)
         break
       case "geojson":
         // "Fetch" data URI
@@ -328,10 +291,11 @@ export class EodashStyleEditor extends LitElement {
       if (layer.type == "WebGLTile") {
         layer.style = this._style
       } else if (layer.type == "Vector") {
+        console.log(this._style)
         layer.properties.layerConfig = {
-          schema: this._style.jsonform,
+          schema: this._style.jsonform ? this._style.jsonform : undefined,
           style:  this._style,
-          legend: this._style.legend,
+          legend: this._style.legend ? this._style.legend : undefined,
         }
       }
 
@@ -447,7 +411,7 @@ export class EodashStyleEditor extends LitElement {
   get layerControl() {
     return html`
       <div id="layercontrol" class="card scroll" style="max-width: 300px">
-        <div style="width: 300px; height: 300px;">
+        <div style="width: 300px; height: 400px;">
           <eox-layercontrol
             idProperty='id'
             titleProperty='title'
@@ -464,6 +428,7 @@ export class EodashStyleEditor extends LitElement {
   render() {
     return html`
       <style>
+        ${eoxUiStyle}
         ${componentStyle}
       </style>
       <div class="eodash-style-editor">
@@ -490,18 +455,30 @@ export class EodashStyleEditor extends LitElement {
         }
 
         <style-editor-toolbar
+          style="z-index: 3000"
           url="${this._url}"
           @submit="${(event) => {
-            this._url = event.detail
+            this._url = event.detail.uri
+            this._style = event.detail.style
             this._buildMapLayers({shouldBoundsUpdate: true})
           }}"
         ></style-editor-toolbar>
 
+        <!--<div id="map-buttons">
+          <button class="small-round small" style="
+            background: #FFF;
+            box-shadow: 0px 3px 7px 0px rgba(0,0,0,0.14);
+            width: var(--map-button-size) !important;
+          ">
+            <i>
+              <svg xmlns="http://www.w3.org/2000/svg" style="transform: translateY(1px);" viewBox="0 0 24 24"><title>layers</title><path fill="#004170" d="M12,16L19.36,10.27L21,9L12,2L3,9L4.63,10.27M12,18.54L4.62,12.81L3,14.07L12,21.07L21,14.07L19.37,12.8L12,18.54Z" /></svg>
+            </i>
+          </button>
+        <div>-->
+
         ${
           this._isLayerControlVisible
-            ? html`
-                ${this.layerControl}
-              `
+            ? html`${this.layerControl}`
             : html``
         }
 

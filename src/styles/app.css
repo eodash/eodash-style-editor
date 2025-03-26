@@ -1,19 +1,42 @@
-@import "tailwindcss";
-
 @import "./substyles/_spinner.css";
+
+@import "./_colors.css";
 
 :root, eodash-style-editor {
   width: 100vw;
   height: 100vh;
   max-width: 100vw;
   max-height: 100vh;
+
+  --map-button-size: 40px;
+
+  --toolbar-height: 48px;
+}
+
+#map-buttons {
+  position: absolute;
+  right: 36px;
+  top: 90px;
+  width: var(--map-button-size);
+  max-width: var(--map-button-size);
+  z-index: 100;
+}
+
+#map-buttons button {
+  width: var(--map-button-size);
+  height: var(--map-button-size);
+  margin: 0 0 12px 0;
+  padding: 0;
+  background: #FFF;
+  box-shadow: 0px 3px 7px 0px rgba(0,0,0,0.14);
+  width: var(--map-button-size);
 }
 
 #layercontrol {
   position: fixed;
   right: 20px;
   top: 90px;
-  z-index: 100;
+  z-index: 10;
 }
 
 #mapToolbar {
@@ -36,6 +59,23 @@ eox-map {
   position: fixed;
   left: 0;
   top: 0;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-row {
+  flex-direction: row;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.flex-center {
+  justify-content: center;
+  align-items: center;
 }
 
 #style-editor-loader {
@@ -136,6 +176,7 @@ eox-map {
   font-weight: 700;
   font-size: 16px;
   color: #051E2E;
+  margin-top: 0;
 }
 
 .layers-title {
