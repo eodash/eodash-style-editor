@@ -375,8 +375,11 @@ export class EodashStyleEditor extends LitElement {
       // It is important to to only set the editor value only if the parsing was successful,
       // otherwise desynchronization sneaks in and messes with our formatting. Do not move.
       this._style = parseResult
-      // Rebuild map layers
-      this._updateLayerStyles()
+      if (this._url.includes(".tif")) {
+        await this._buildMapLayers({shouldBoundsUpdate: true})
+      } else {
+        this._updateLayerStyles()
+      }
     }
   }
 
