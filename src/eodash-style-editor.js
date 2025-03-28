@@ -40,8 +40,8 @@ const jsonFormConfig = {
               "tabSize":2,
               "fontSize":14,
               "fontFamily":"'IBM Plex Mono'",
-              "maxPixelHeight": window.innerHeight - 250,
-              "maxLines": 600,
+              "maxPixelHeight": window.innerHeight - 174,
+              "maxLines": 50,
            }
         }
      }
