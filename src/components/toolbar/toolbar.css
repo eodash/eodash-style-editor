@@ -28,24 +28,15 @@
   left: var(--app-padding);
   right: var(--app-padding);
   height: var(--toolbar-height);
-  border-radius: var(--toolbar-border-radius);
 }
 
 .style-editor-toolbar input {
   min-width: 400px;
-
-  width: calc(100% - 100px);
-  background: white;
-  border: none;
-  height: var(--toolbar-height);
-  color: #333;
-  border-radius: 12px 0 0 12px;
-  font-size: 14px;
-  font-weight: 700;
   padding-left: 16px;
   font-family: "IBM Plex Mono";
+  font-weight: 600;
 
-  background: #fffa;
+  background: #fffc;
   backdrop-filter: blur(10px);
   box-shadow: 0px 3px 5px 0px rgba(0,0,0,0.17);
 }

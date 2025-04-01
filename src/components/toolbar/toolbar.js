@@ -116,31 +116,22 @@ export class StyleEditorToolbar extends LitElement {
       </style>
       <div class="style-editor-toolbar">
         <div class="flex">
-          <div id="logo">
-            <img src="/eodash-style-editor/EOX_Eye.svg" width="32" />
-          </div>
-          <input
-            style="font-size: 0.9rem;"
-            type="text"
-            value="${this._inputValue}"
-            @input="${this._onInput}"
-            placeholder="Paste a link here to load geometry"
-          />
-
-          <button
-            @click="${this._triggerFileLoad}"
-            style="
-              background: #004170 !important;
-              color: #FFF !important;
-              font-weight: 700 !important;
-              margin: 0;
-              min-width: 54px;
-            "
-            class="primary right-round fill"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><title>import</title><path d="M14,12L10,8V11H2V13H10V16M20,18V6C20,4.89 19.1,4 18,4H6A2,2 0 0,0 4,6V9H6V6H18V18H6V15H4V18A2,2 0 0,0 6,20H18A2,2 0 0,0 20,18Z" /></svg>
-            <span>Load</span>
-          </button>
+          <nav class="no-space small" style="height: 40px; width: 100%; margin-block-start: 0">
+            <div class="max field border left-round small">
+              <input
+                class="round small"
+                value="${this._inputValue}"
+                @input="${this._onInput}"
+                style="font-size: 0.9rem;"
+                type="text"
+                placeholder="Paste a link here to load geometry"
+              />
+            </div>
+            <button @click="${this._triggerFileLoad}" class="right-round">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><title>import</title><path d="M14,12L10,8V11H2V13H10V16M20,18V6C20,4.89 19.1,4 18,4H6A2,2 0 0,0 4,6V9H6V6H18V18H6V15H4V18A2,2 0 0,0 6,20H18A2,2 0 0,0 20,18Z" /></svg>
+              <span>Load</span>
+            </button>
+          </nav>
 
           <div class="field suffix border round small" style="width: 270px; margin-top: 0; margin-left: 9px; background: #FFF;">
             <select @change="${(e) => this._onSelectExample(e)}" style="font-size: .875rem; cursor: pointer;">

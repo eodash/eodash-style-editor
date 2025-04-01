@@ -436,11 +436,7 @@ export class EodashStyleEditor extends LitElement {
         ${this._isMapLoading
           ? html`<div id="style-editor-loader">
             <div style="display: flex; width: 100%; height: 100%; justify-content: center; align-items: center">
-              <div class="trinity-rings-spinner" style="transform: scale(2)">
-                <div class="circle"></div>
-                <div class="circle"></div>
-                <div class="circle"></div>
-              </div>
+              <progress class="circle large"></progress>
             </div>
           </div>`
           : html`<eox-map
