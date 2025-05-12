@@ -137,7 +137,7 @@ export class StyleEditorToolbar extends LitElement {
             <select @change="${(e) => this._onSelectExample(e)}" style="font-size: .875rem; cursor: pointer;">
               <option>Polar Ice FGB</option>
               <option>Crop Circles COG</option>
-              <option>Inline GeoJSON</option>
+              <option>GeoJSON</option>
             </select>
             <i>arrow_drop_down</i>
           </div>
