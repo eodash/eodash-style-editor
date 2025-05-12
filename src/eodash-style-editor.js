@@ -247,7 +247,9 @@ export class EodashStyleEditor extends LitElement {
   _getFileFormat(url) {
     if (url.includes(".tif")) { return "tif" }
     if (url.includes(".fgb")) { return "fgb" }
-    if (url.includes("data:,")) { return "geojson" }
+    if (url.includes("data:,")
+        || url.includes(".geojson")
+        || url.includes(".json")) { return "geojson" }
 
     return "unknown"
   }
@@ -292,6 +294,7 @@ export class EodashStyleEditor extends LitElement {
         layer.style = this._style
       } else if (layer.type == "Vector") {
         console.log(this._style)
+        if (!this._style) { this._style = {} }
         layer.properties.layerConfig = {
           schema: this._style.jsonform,
           style:  this._style,
