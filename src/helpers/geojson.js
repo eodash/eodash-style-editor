@@ -63,7 +63,20 @@ function buildGeojsonConfig(url) {
           ],
           "#eee"
         ]
-      }
+      },
+      "interactions":[
+        {
+          "type":"select",
+          "options":{
+              "id":"selectInteraction",
+              "condition":"pointermove",
+              "style":{
+                "stroke-color":"white",
+                "stroke-width":3
+              }
+          }
+        }
+      ]
     },
     {
       "type": "Tile",
