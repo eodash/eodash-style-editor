@@ -38,7 +38,7 @@ async function getGeojsonExtent(featureCollection) {
   return [minX, minY, maxX, maxY];
 }
 
-function buildGeojsonConfig(url) {
+function buildGeojsonConfig(url, style) {
   return [
     {
       "type":"Vector",
