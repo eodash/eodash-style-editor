@@ -64,8 +64,8 @@ function buildGeojsonConfig(url) {
           "#eee"
         ]
       },
-      "interactions":[
-        {
+      "interactions": style.tooltip !== undefined
+        ? [{
           "type":"select",
           "options":{
               "id":"selectInteraction",
@@ -75,8 +75,8 @@ function buildGeojsonConfig(url) {
                 "stroke-width":3
               }
           }
-        }
-      ]
+        }]
+        : []
     },
     {
       "type": "Tile",
