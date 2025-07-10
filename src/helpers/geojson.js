@@ -64,7 +64,7 @@ function buildGeojsonConfig(url, style) {
           "#eee"
         ]
       },
-      "interactions": style.tooltip !== undefined
+      "interactions": style && style.tooltip !== undefined
         ? [{
           "type":"select",
           "options":{
