@@ -138,6 +138,7 @@ export class StyleEditorToolbar extends LitElement {
               <option>Polar Ice FGB</option>
               <option>Crop Circles COG</option>
               <option>GeoJSON</option>
+              <option>GeoJSON with Tooltip</option>
             </select>
             <i>arrow_drop_down</i>
           </div>

@@ -274,7 +274,7 @@ export class EodashStyleEditor extends LitElement {
         const fetchRes = await fetch(this._url)
         const featureCollection = await fetchRes.json()
         this._mapZoomExtent = await getGeojsonExtent(featureCollection)
-        layers = buildGeojsonConfig(this._url)
+        layers = buildGeojsonConfig(this._url, this._style)
         break
       case "tif":
         this._mapZoomExtent = await getGeotiffExtent(this._url)

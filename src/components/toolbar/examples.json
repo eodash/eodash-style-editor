@@ -5,6 +5,32 @@
     "style": {"stroke-color":"red","radius":5,"fill":"red"}
   },
   {
+    "name": "GeoJSON with Tooltip",
+    "uri": "https://gist.githubusercontent.com/spectrachrome/911295cd5d54a30495520ed3dde0f3bc/raw/387cbba42f99684c1306891e472b3c706cc9b4d2/testFeatures.json",
+    "style": {
+        "variables": {
+            "strokeWidth": 1
+        },
+        "fill-color": "red",
+        "stroke-color": "black",
+        "stroke-width": ["var", "strokeWidth"],
+        "jsonform": {
+            "type": "object",
+            "title": "Data configuration",
+            "properties": {
+              "strokeWidth": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 10,
+                "format": "range",
+                "default": 0
+              }
+            }
+        },
+        "tooltip": [{"id": "name", "title": "Projection: "}]
+    }
+  },
+  {
     "name": "Crop Circles COG",
     "uri": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/36/Q/WD/2020/7/S2A_36QWD_20200701_0_L2A/TCI.tif",
     "style": {"color":["case",[">",["band",1],0],["array",["*",["band",1],0.4],["*",["band",2],1],["*",["band",3],1],1],["color",0,0,0,0]]}
