@@ -11,10 +11,12 @@ import "@eox/jsonform"
 import "color-legend-element"
 
 import "./components/toolbar/toolbar"
+import "./components/style-import-dialog"
 
 import { getGeotiffExtent } from "./helpers/geotiff"
 import { getFgbExtent, buildFgbConfig } from "./helpers/fgb"
 import { getGeojsonExtent, buildGeojsonConfig } from "./helpers/geojson"
+import { styleConvertExample } from "./helpers/import-style"
 
 import "./fonts/IBMPlexMono-Regular.ttf"
 import eoxUiStyle from "@eox/ui/style.css?inline"
@@ -168,6 +170,7 @@ export class EodashStyleEditor extends LitElement {
     this._mapLayers = []
     this._mapZoomExtent = null
     this._isLayerControlVisible = false;
+    this._isStyleImporterVisible = false;
 
     this._style = {
       "stroke-color": "red",
@@ -191,7 +194,8 @@ export class EodashStyleEditor extends LitElement {
 
     this._isMapLoading = false
     // this._url = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/36/Q/WD/2020/7/S2A_36QWD_20200701_0_L2A/TCI.tif"
-    this._url = "https://obs.eu-nl.otc.t-systems.com/gtif-data-cerulean1/output-polaris/202501200900_SouthEast_RIC-processed.fgb"
+    //this._url = "https://obs.eu-nl.otc.t-systems.com/gtif-data-cerulean1/output-polaris/202501200900_SouthEast_RIC-processed.fgb"
+    this._url = "https://gist.githubusercontent.com/spectrachrome/911295cd5d54a30495520ed3dde0f3bc/raw/387cbba42f99684c1306891e472b3c706cc9b4d2/testFeatures.json"
     this._layerControlFormValue = {}
   }
 
@@ -206,6 +210,7 @@ export class EodashStyleEditor extends LitElement {
     _style: {state: true},
     _isMapLoading: {state: true},
     _isLayerControlVisible: {state: true},
+    _isStyleImporterVisible: {state: true},
     _layerControlFormValue: { state: true },
     _shouldUpdate: { state: true },
   };
@@ -391,6 +396,8 @@ export class EodashStyleEditor extends LitElement {
       // Build the map config
       this._buildMapLayers({shouldBoundsUpdate: true})
       this._isInitialized = true
+
+      styleConvertExample()
     }
 
     window.setTimeout(() => {
@@ -433,6 +440,12 @@ export class EodashStyleEditor extends LitElement {
         ${eoxUiStyle}
         ${componentStyle}
       </style>
+
+      <style-import-dialog
+        .isVisible="${this._isStyleImporterVisible}"
+        @cancel="${(_e) => this._isStyleImporterVisible = false}"
+      ></style-import-dialog>
+
       <div class="eodash-style-editor">
         ${this._isMapLoading
           ? html`<div id="style-editor-loader">
@@ -455,6 +468,7 @@ export class EodashStyleEditor extends LitElement {
         <style-editor-toolbar
           style="z-index: 3000"
           url="${this._url}"
+          @importstyle="${() => this._isStyleImporterVisible = true}"
           @submit="${(event) => {
             this._url = event.detail.uri
             this._style = event.detail.style
