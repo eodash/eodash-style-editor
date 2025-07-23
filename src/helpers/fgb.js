@@ -5,7 +5,6 @@ async function getFgbExtent(url) {
   console.log(url);
   const response = await fetch(url)
   const buffer = await response.arrayBuffer()
-  console.log(buffer)
   const featureCollection = deserialize(new Uint8Array(buffer))
 
   let minX = Infinity;
@@ -56,18 +55,7 @@ function buildFgbConfig(url, style) {
         "type": "FlatGeoBuf",
         "url": url,
       },
-      "style":{
-        "stroke-color": "#232323",
-        "stroke-width": 7,
-        "fill-color":[
-          "string",
-          [
-            "get",
-            "COLOR"
-          ],
-          "#eee"
-        ]
-      },
+      "style": {"stroke-width": 1, "stroke-color": "#000"},
       "interactions":[
         {
           "type":"select",

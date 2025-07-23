@@ -457,9 +457,7 @@ export class EodashStyleEditor extends LitElement {
           url="${this._url}"
           @submit="${(event) => {
             this._url = event.detail.uri
-            if (event.detail.style) {
-              this._style = event.detail.style
-            }
+            this._style = event.detail.style || {}
             this._buildMapLayers({shouldBoundsUpdate: true})
           }}"
         ></style-editor-toolbar>
