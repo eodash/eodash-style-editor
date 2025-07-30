@@ -13,6 +13,8 @@ import "color-legend-element"
 import "./components/toolbar/toolbar"
 import "./components/style-import-dialog"
 
+import StyleParser from "./lib/style/style-parser.js"
+
 import { getGeotiffExtent } from "./helpers/geotiff"
 import { getFgbExtent, buildFgbConfig } from "./helpers/fgb"
 import { getGeojsonExtent, buildGeojsonConfig } from "./helpers/geojson"
@@ -28,6 +30,33 @@ import cerulean from "./cerulean_style.json?inline"
 //import exampleStyleDef from "./example-style.json?inline"
 
 const maxEditorHeight = window.innerHeight
+
+/**
+   * @param {object} vector layer
+   * @param {string} text the xml text
+   * apply sld
+   */
+function applySLD(vectorLayer, text) {
+  const sldObject = SLDReader.Reader(text);    
+  const sldLayer = SLDReader.getLayer(sldObject);
+  const style = SLDReader.getStyle(sldLayer, 'bestuurlijkegrenzen:provincies');
+  const featureTypeStyle = style.featuretypestyles[0];
+
+  const viewProjection = map.getView().getProjection();
+  vectorLayer.setStyle(SLDReader.createOlStyleFunction(featureTypeStyle, {
+    // Use the convertResolution option to calculate a more accurate resolution.
+    convertResolution: viewResolution => {
+      const viewCenter = map.getView().getCenter();
+      return ol.proj.getPointResolution(viewProjection, viewResolution, viewCenter);
+    },
+    // If you use point icons with an ExternalGraphic, you have to use imageLoadCallback
+    // to update the vector layer when an image finishes loading.
+    // If you do not do this, the image will only be visible after next layer pan/zoom.
+    imageLoadedCallback: () => {
+      vectorLayer.changed();
+    },
+  }));
+}
 
 const jsonFormConfig = {
   "type":"object",
