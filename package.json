@@ -14,16 +14,15 @@
     "@eox/layout": "^0.3.0",
     "@eox/map": "^1.19.3",
     "@eox/ui": "^0.1.10",
+    "@nieuwlandgeo/sldreader": "^0.7.0",
     "color-legend-element": "^1.3.0",
     "flatgeobuf": "^3.36.0",
-    "geostyler": "^18.1.2",
-    "geostyler-openlayers-parser": "^5.1.2",
-    "geostyler-qgis-parser": "^4.0.2",
     "geotiff.js": "^1.0.1",
     "json-stringify-pretty-compact": "^4.0.0",
     "lit": "^3.2.1",
     "lodash.debounce": "^4.0.8",
     "mustache": "^4.2.0",
+    "ol-mapbox-style": "^13.0.1",
     "proj4": "^2.15.0"
   },
   "devDependencies": {
