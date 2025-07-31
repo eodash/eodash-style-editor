@@ -4,6 +4,8 @@ import eoxUiStyle from "@eox/ui/style.css?inline"
 
 import StyleParser from "../lib/style/style-parser.js"
 
+import * as SLDReader from '@nieuwlandgeo/sldreader'
+
 import componentStyle from "../styles/app.css?inline"
 
 class StyleImportDialog extends LitElement {
@@ -85,11 +87,19 @@ class StyleImportDialog extends LitElement {
     const styleString = await response.text();
     console.log(this._selectedFormat)
     switch (this._selectedFormat) {
-      case "qml":
-        console.log(`Trying to parse QML style: ${styleString}`)
-        console.log(await styleParser.parseQML(styleString))
+      case "eodash":
+        try {
+          const parsedStyle = JSON.parse(styleString);
+        } catch (e) {
+          this._loadingHint = "Fetched file is not a valid eodash style"
+          setTimeout(() => this._isLoading = false, 2000)
+        }
         break
       case "sld":
+        const sldObject = SLDReader.Reader(styleString)
+        const sldLayer = SLDReader.getLayer(sldObject)
+        const style = SLDReader.getStyle(sldLayer, 'sld:WaterBodies')
+        console.log(style)
         break
     }
 /*
