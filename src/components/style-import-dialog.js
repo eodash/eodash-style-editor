@@ -92,14 +92,28 @@ class StyleImportDialog extends LitElement {
           const parsedStyle = JSON.parse(styleString);
         } catch (e) {
           this._loadingHint = "Fetched file is not a valid eodash style"
-          setTimeout(() => this._isLoading = false, 2000)
+          setTimeout(() => this._isLoading = false, 1000)
         }
         break
       case "sld":
-        const sldObject = SLDReader.Reader(styleString)
-        const sldLayer = SLDReader.getLayer(sldObject)
-        const style = SLDReader.getStyle(sldLayer, 'sld:WaterBodies')
-        console.log(style)
+        try {
+          const sldObject = SLDReader.Reader(styleString)
+          const sldLayer = SLDReader.getLayer(sldObject)
+          const style = SLDReader.getStyle(sldLayer)
+          console.log(style)
+
+          const event = new CustomEvent('onloadsld', {
+            detail: styleString,
+            bubbles: true,
+            composed: true,
+          })
+          this.dispatchEvent(event)
+          this._cancel()
+        } catch (e) {
+          this._loadingHint = "Fetched file is not a valid SLD style"
+          setTimeout(() => this._isLoading = false, 1000)
+        }
+
         break
     }
 /*
