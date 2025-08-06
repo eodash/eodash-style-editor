@@ -226,6 +226,9 @@ export class EodashStyleEditor extends LitElement {
     //this._url = "https://obs.eu-nl.otc.t-systems.com/gtif-data-cerulean1/output-polaris/202501200900_SouthEast_RIC-processed.fgb"
     this._url = "https://gist.githubusercontent.com/spectrachrome/911295cd5d54a30495520ed3dde0f3bc/raw/387cbba42f99684c1306891e472b3c706cc9b4d2/testFeatures.json"
     this._layerControlFormValue = {}
+    this._errorQueue = []
+    this._snackbarDuration = 2000
+    this._currentError = ''
   }
 
   #debouncedEditorFn = null
@@ -242,7 +245,36 @@ export class EodashStyleEditor extends LitElement {
     _isStyleImporterVisible: {state: true},
     _layerControlFormValue: { state: true },
     _shouldUpdate: { state: true },
-  };
+    _errorQueue: { state: true },
+    _currentError: { state: true },
+    // Duration in milliseconds until a spawned snackbar notification fades away.
+    _snackbarDuration: { state: true },
+  }
+
+  // Error handling remains the same
+  _handleError(event) {
+    event.stopPropagation()
+    this._errorQueue = [...this._errorQueue, event.detail]
+
+    if (!this._currentError) {
+      this._processNextError()
+    }
+  }
+
+  _processNextError() {
+    if (this._errorQueue.length === 0) return
+    this._currentError = this._errorQueue[0]
+    this._errorQueue = this._errorQueue.slice(1)
+    
+    setTimeout(() => {
+      this._currentError = null
+      
+      // Hide snackbar for 500ms
+      this._currentError = ''
+      // Process next error after current is dismissed
+      setTimeout(this._processNextError, 500)
+    }, this._snackbarDuration)
+  }
 
   _tooltipPropertyTransform = (param) => {
     const templateContext = {
@@ -296,7 +328,7 @@ export class EodashStyleEditor extends LitElement {
 
     const inputFormat = this._getFileFormat(this._url)
 
-    console.log(`shouldBoundsUpdate: ${options.shouldBoundsUpdate}`)
+    //console.log(`shouldBoundsUpdate: ${options.shouldBoundsUpdate}`)
 
     switch (inputFormat) {
       case "fgb":
@@ -473,9 +505,24 @@ export class EodashStyleEditor extends LitElement {
       <style-import-dialog
         .isVisible="${this._isStyleImporterVisible}"
         @cancel="${(_e) => this._isStyleImporterVisible = false}"
+        @loadstyle="${(e) => {
+          this._style = e.detail
+          this._buildMapLayers()
+        }}"
+        @loadsld="${(e) => { console.log("received request to load SLD style!")}}"
+        @error="${this._handleError}"
       ></style-import-dialog>
 
       <div class="eodash-style-editor">
+      <div class="snackbar error ">
+        ${this._currentError}
+      </div>
+        <div
+          class="snackbar error small-round ${this._currentError !== '' ? 'active' : ''}"
+        >
+          <i>error</i> <b>Error:</b> The entered URL is not a valid web address
+        </div>
+
         ${this._isMapLoading
           ? html`<div id="style-editor-loader">
             <div style="display: flex; width: 100%; height: 100%; justify-content: center; align-items: center">
