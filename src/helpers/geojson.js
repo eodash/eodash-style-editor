@@ -54,18 +54,7 @@ function buildGeojsonConfig(url, style, sld) {
         "format":"GeoJSON",
         "attributions":"Regions: @ openlayers.org"
       },
-      "style":{
-        "stroke-color":"#232323",
-        "stroke-width":1,
-        "fill-color":[
-          "string",
-          [
-            "get",
-            "COLOR"
-          ],
-          "#eee"
-        ]
-      },
+      "style": style,
       "interactions": style && style.tooltip !== undefined
         ? [{
           "type":"select",

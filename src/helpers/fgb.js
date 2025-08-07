@@ -43,7 +43,7 @@ async function getFgbExtent(url) {
   return [minX, minY, maxX, maxY];
 }
 
-function buildFgbConfig(url) {
+function buildFgbConfig(url, style) {
   return [
     {
       "type": "Vector",
@@ -55,6 +55,7 @@ function buildFgbConfig(url) {
         "type": "FlatGeoBuf",
         "url": url,
       },
+      "style": {"stroke-width": 1, "stroke-color": "#000"},
       "interactions":[
         {
           "type":"select",

@@ -225,8 +225,8 @@ export class EodashStyleEditor extends LitElement {
 
     this._isMapLoading = false
     // this._url = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/36/Q/WD/2020/7/S2A_36QWD_20200701_0_L2A/TCI.tif"
-    //this._url = "https://obs.eu-nl.otc.t-systems.com/gtif-data-cerulean1/output-polaris/202501200900_SouthEast_RIC-processed.fgb"
     this._url = "https://gist.githubusercontent.com/spectrachrome/911295cd5d54a30495520ed3dde0f3bc/raw/387cbba42f99684c1306891e472b3c706cc9b4d2/testFeatures.json"
+    //this._url = "https://workspace-ui-public.cif.gtif.eox.at/api/public/share/public-4WaZei3Y-02/examples/202501200900_SouthEast_RIC-processed.fgb"
     this._layerControlFormValue = {}
     this._errorQueue = []
     this._snackbarDuration = 2000
@@ -559,7 +559,7 @@ export class EodashStyleEditor extends LitElement {
           @importstyle="${() => this._isStyleImporterVisible = true}"
           @submit="${(event) => {
             this._url = event.detail.uri
-            this._style = event.detail.style
+            this._style = event.detail.style || {}
             this._buildMapLayers({shouldBoundsUpdate: true})
           }}"
         ></style-editor-toolbar>
