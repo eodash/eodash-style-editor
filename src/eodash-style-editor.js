@@ -2,6 +2,7 @@ import { LitElement, css, html } from "lit"
 import stringify from "json-stringify-pretty-compact"
 import _debounce from "lodash.debounce"
 import mustache from "mustache"
+import * as SLDReader from "@nieuwlandgeo/sldreader"
 
 import "@eox/layout"
 import "@eox/map"
@@ -11,10 +12,14 @@ import "@eox/jsonform"
 import "color-legend-element"
 
 import "./components/toolbar/toolbar"
+import "./components/style-import-dialog"
+
+import StyleParser from "./lib/style/style-parser.js"
 
 import { getGeotiffExtent } from "./helpers/geotiff"
 import { getFgbExtent, buildFgbConfig } from "./helpers/fgb"
 import { getGeojsonExtent, buildGeojsonConfig } from "./helpers/geojson"
+import { styleConvertExample } from "./helpers/import-style"
 
 import "./fonts/IBMPlexMono-Regular.ttf"
 import eoxUiStyle from "@eox/ui/style.css?inline"
@@ -26,6 +31,34 @@ import cerulean from "./cerulean_style.json?inline"
 //import exampleStyleDef from "./example-style.json?inline"
 
 const maxEditorHeight = window.innerHeight
+
+/**
+   * @param {object} vector layer
+   * @param {string} text the xml text
+   * apply sld
+   */
+function applySLD(vectorLayer, map, text) {
+  console.log(map)
+  const sldObject = SLDReader.Reader(text);    
+  const sldLayer = SLDReader.getLayer(sldObject);
+  const style = SLDReader.getStyle(sldLayer);
+  const featureTypeStyle = style.featuretypestyles[0];
+
+  const viewProjection = map.getView().getProjection();
+  vectorLayer.setStyle(SLDReader.createOlStyleFunction(featureTypeStyle, /*{
+    // Use the convertResolution option to calculate a more accurate resolution.
+    convertResolution: viewResolution => {
+      const viewCenter = map.getView().getCenter();
+      return ol.proj.getPointResolution(viewProjection, viewResolution, viewCenter);
+    },
+    // If you use point icons with an ExternalGraphic, you have to use imageLoadCallback
+    // to update the vector layer when an image finishes loading.
+    // If you do not do this, the image will only be visible after next layer pan/zoom.
+    imageLoadedCallback: () => {
+      vectorLayer.changed();
+    },
+  }*/));
+}
 
 const jsonFormConfig = {
   "type":"object",
@@ -168,6 +201,7 @@ export class EodashStyleEditor extends LitElement {
     this._mapLayers = []
     this._mapZoomExtent = null
     this._isLayerControlVisible = false;
+    this._isStyleImporterVisible = false;
 
     this._style = {
       "stroke-color": "red",
@@ -191,8 +225,12 @@ export class EodashStyleEditor extends LitElement {
 
     this._isMapLoading = false
     // this._url = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/36/Q/WD/2020/7/S2A_36QWD_20200701_0_L2A/TCI.tif"
-    this._url = "https://workspace-ui-public.cif.gtif.eox.at/api/public/share/public-4WaZei3Y-02/examples/202501200900_SouthEast_RIC-processed.fgb"
+    this._url = "https://gist.githubusercontent.com/spectrachrome/911295cd5d54a30495520ed3dde0f3bc/raw/387cbba42f99684c1306891e472b3c706cc9b4d2/testFeatures.json"
+    //this._url = "https://workspace-ui-public.cif.gtif.eox.at/api/public/share/public-4WaZei3Y-02/examples/202501200900_SouthEast_RIC-processed.fgb"
     this._layerControlFormValue = {}
+    this._errorQueue = []
+    this._snackbarDuration = 2000
+    this._currentError = ''
   }
 
   #debouncedEditorFn = null
@@ -206,9 +244,39 @@ export class EodashStyleEditor extends LitElement {
     _style: {state: true},
     _isMapLoading: {state: true},
     _isLayerControlVisible: {state: true},
+    _isStyleImporterVisible: {state: true},
     _layerControlFormValue: { state: true },
     _shouldUpdate: { state: true },
-  };
+    _errorQueue: { state: true },
+    _currentError: { state: true },
+    // Duration in milliseconds until a spawned snackbar notification fades away.
+    _snackbarDuration: { state: true },
+  }
+
+  // Error handling remains the same
+  _handleError(event) {
+    event.stopPropagation()
+    this._errorQueue = [...this._errorQueue, event.detail]
+
+    if (!this._currentError) {
+      this._processNextError()
+    }
+  }
+
+  _processNextError() {
+    if (this._errorQueue.length === 0) return
+    this._currentError = this._errorQueue[0]
+    this._errorQueue = this._errorQueue.slice(1)
+
+    setTimeout(() => {
+      this._currentError = null
+
+      // Hide snackbar for 500ms
+      this._currentError = ''
+      // Process next error after current is dismissed
+      setTimeout(this._processNextError, 500)
+    }, this._snackbarDuration)
+  }
 
   _tooltipPropertyTransform = (param) => {
     const templateContext = {
@@ -261,8 +329,6 @@ export class EodashStyleEditor extends LitElement {
     var layers = []
 
     const inputFormat = this._getFileFormat(this._url)
-
-    console.log(`shouldBoundsUpdate: ${options.shouldBoundsUpdate}`)
 
     switch (inputFormat) {
       case "fgb":
@@ -391,6 +457,8 @@ export class EodashStyleEditor extends LitElement {
       // Build the map config
       this._buildMapLayers({shouldBoundsUpdate: true})
       this._isInitialized = true
+
+      styleConvertExample()
     }
 
     window.setTimeout(() => {
@@ -433,7 +501,40 @@ export class EodashStyleEditor extends LitElement {
         ${eoxUiStyle}
         ${componentStyle}
       </style>
+
+      <style-import-dialog
+        .isVisible="${this._isStyleImporterVisible}"
+        @cancel="${(_e) => this._isStyleImporterVisible = false}"
+        @loadstyle="${(e) => {
+          this._style = e.detail
+          this._buildMapLayers()
+        }}"
+        @loadsld="${(e) => {
+          const map = this.renderRoot.querySelector('eox-map')
+          console.log(map.map.getLayers().getArray())
+          map.map.getLayers().getArray()
+            .forEach((layer) => {
+              if (layer.get('type') == "Vector") {
+                console.log("Applying SLD")
+                let olStyleFunction = applySLD(layer, map.map, e.detail)
+                console.log(olStyleFunction)
+                console.log(layer.getStyle())
+              }
+            })
+        }}"
+        @error="${this._handleError}"
+      ></style-import-dialog>
+
       <div class="eodash-style-editor">
+        <div class="snackbar error">
+          ${this._currentError}
+        </div>
+        <div
+          class="snackbar error small-round ${this._currentError !== '' ? 'active' : ''}"
+        >
+          <i>error</i> <b>Error:</b> ${this._currentError}
+        </div>
+
         ${this._isMapLoading
           ? html`<div id="style-editor-loader">
             <div style="display: flex; width: 100%; height: 100%; justify-content: center; align-items: center">
@@ -455,6 +556,7 @@ export class EodashStyleEditor extends LitElement {
         <style-editor-toolbar
           style="z-index: 3000"
           url="${this._url}"
+          @importstyle="${() => this._isStyleImporterVisible = true}"
           @submit="${(event) => {
             this._url = event.detail.uri
             this._style = event.detail.style || {}

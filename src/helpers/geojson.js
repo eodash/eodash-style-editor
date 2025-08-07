@@ -1,5 +1,6 @@
 import proj4 from "proj4"
 
+
 async function getGeojsonExtent(featureCollection) {
   console.log(featureCollection);
   let minX = Infinity;
@@ -38,7 +39,8 @@ async function getGeojsonExtent(featureCollection) {
   return [minX, minY, maxX, maxY];
 }
 
-function buildGeojsonConfig(url, style) {
+/// `sld` is an optional parameter to apply an SLD style to the feature collection
+function buildGeojsonConfig(url, style, sld) {
   return [
     {
       "type":"Vector",
