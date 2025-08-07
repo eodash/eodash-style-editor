@@ -2,6 +2,7 @@ import { LitElement, css, html } from "lit"
 import stringify from "json-stringify-pretty-compact"
 import _debounce from "lodash.debounce"
 import mustache from "mustache"
+import * as SLDReader from "@nieuwlandgeo/sldreader"
 
 import "@eox/layout"
 import "@eox/map"
@@ -36,14 +37,15 @@ const maxEditorHeight = window.innerHeight
    * @param {string} text the xml text
    * apply sld
    */
-function applySLD(vectorLayer, text) {
+function applySLD(vectorLayer, map, text) {
+  console.log(map)
   const sldObject = SLDReader.Reader(text);    
   const sldLayer = SLDReader.getLayer(sldObject);
-  const style = SLDReader.getStyle(sldLayer, 'bestuurlijkegrenzen:provincies');
+  const style = SLDReader.getStyle(sldLayer);
   const featureTypeStyle = style.featuretypestyles[0];
 
   const viewProjection = map.getView().getProjection();
-  vectorLayer.setStyle(SLDReader.createOlStyleFunction(featureTypeStyle, {
+  vectorLayer.setStyle(SLDReader.createOlStyleFunction(featureTypeStyle, /*{
     // Use the convertResolution option to calculate a more accurate resolution.
     convertResolution: viewResolution => {
       const viewCenter = map.getView().getCenter();
@@ -55,7 +57,7 @@ function applySLD(vectorLayer, text) {
     imageLoadedCallback: () => {
       vectorLayer.changed();
     },
-  }));
+  }*/));
 }
 
 const jsonFormConfig = {
@@ -265,10 +267,10 @@ export class EodashStyleEditor extends LitElement {
     if (this._errorQueue.length === 0) return
     this._currentError = this._errorQueue[0]
     this._errorQueue = this._errorQueue.slice(1)
-    
+
     setTimeout(() => {
       this._currentError = null
-      
+
       // Hide snackbar for 500ms
       this._currentError = ''
       // Process next error after current is dismissed
@@ -327,8 +329,6 @@ export class EodashStyleEditor extends LitElement {
     var layers = []
 
     const inputFormat = this._getFileFormat(this._url)
-
-    //console.log(`shouldBoundsUpdate: ${options.shouldBoundsUpdate}`)
 
     switch (inputFormat) {
       case "fgb":
@@ -509,18 +509,30 @@ export class EodashStyleEditor extends LitElement {
           this._style = e.detail
           this._buildMapLayers()
         }}"
-        @loadsld="${(e) => { console.log("received request to load SLD style!")}}"
+        @loadsld="${(e) => {
+          const map = this.renderRoot.querySelector('eox-map')
+          console.log(map.map.getLayers().getArray())
+          map.map.getLayers().getArray()
+            .forEach((layer) => {
+              if (layer.get('type') == "Vector") {
+                console.log("Applying SLD")
+                let olStyleFunction = applySLD(layer, map.map, e.detail)
+                console.log(olStyleFunction)
+                console.log(layer.getStyle())
+              }
+            })
+        }}"
         @error="${this._handleError}"
       ></style-import-dialog>
 
       <div class="eodash-style-editor">
-      <div class="snackbar error ">
-        ${this._currentError}
-      </div>
+        <div class="snackbar error">
+          ${this._currentError}
+        </div>
         <div
           class="snackbar error small-round ${this._currentError !== '' ? 'active' : ''}"
         >
-          <i>error</i> <b>Error:</b> The entered URL is not a valid web address
+          <i>error</i> <b>Error:</b> ${this._currentError}
         </div>
 
         ${this._isMapLoading

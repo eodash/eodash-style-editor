@@ -3,6 +3,7 @@ import { property, state } from "lit/decorators.js"
 import eoxUiStyle from "@eox/ui/style.css?inline"
 
 import StyleParser from "../lib/style/style-parser.js"
+import StyleFormatDetector from "../lib/style/format-detector.js"
 
 import * as SLDReader from '@nieuwlandgeo/sldreader'
 
@@ -29,7 +30,7 @@ class StyleImportDialog extends LitElement {
     this._isLoading = false
     this._loadingHint = "Loading data"
     this._urlValue = ""
-    this._selectedFormat = "eodash"
+    this._selectedFormat = "eodash_openlayers"
     this._validationErrors = []
     this._loadingIndicators = { "url-input": false }
   }
@@ -40,10 +41,10 @@ class StyleImportDialog extends LitElement {
     this._validationErrors = []
 
     const event = new CustomEvent('cancel', {
-        bubbles: true,
-        composed: true,
-      })
-      this.dispatchEvent(event)
+      bubbles: true,
+      composed: true,
+    })
+    this.dispatchEvent(event)
   }
 
   async _loadStyleFromUrl(e) {
@@ -79,19 +80,32 @@ class StyleImportDialog extends LitElement {
 
     var styleParser = new StyleParser()
 
-    const response = await fetch(this._urlValue);
+    const response = await fetch(this._urlValue)
     if (!response.ok) {
-      throw new Error(`Response status: ${response.status}`);
+      throw new Error(`Response status: ${response.status}`)
     }
 
-    const styleString = await response.text();
-    console.log(this._selectedFormat)
+    const styleString = await response.text()
+    //console.log(this._selectedFormat)
+
+    let formatDetector = new StyleFormatDetector()
+    console.log(styleString)
+    console.log(`Detected format: ${formatDetector.detect(styleString)}`)
+
     switch (this._selectedFormat) {
-      case "eodash":
+      case "eodash_openlayers":
         try {
-          const parsedStyle = JSON.parse(styleString);
+          const parsedStyle = JSON.parse(styleString)
+
+          const event = new CustomEvent('loadstyle', {
+            detail: parsedStyle,
+            bubbles: true,
+            composed: true,
+          })
+          this.dispatchEvent(event)
+          this._cancel()
         } catch (e) {
-          this._loadingHint = "Fetched file is not a valid eodash style"
+          this._loadingHint = "The file is not a valid Eodash or OpenLayers style."
           setTimeout(() => this._isLoading = false, 1000)
         }
         break
@@ -102,7 +116,7 @@ class StyleImportDialog extends LitElement {
           const style = SLDReader.getStyle(sldLayer)
           console.log(style)
 
-          const event = new CustomEvent('onloadsld', {
+          const event = new CustomEvent('loadsld', {
             detail: styleString,
             bubbles: true,
             composed: true,
@@ -124,7 +138,7 @@ class StyleImportDialog extends LitElement {
 
   _urlInputHandler(e) {
     this._urlValue = e.target.value
-
+/*
     // Trigger auto-loading of the URL when one is entered into the input.
     try {
       // Try to parse the string from the input into a `URL` object.
@@ -137,6 +151,7 @@ class StyleImportDialog extends LitElement {
       this._reportError("url-input", "The provided input is not a valid web address")
       return
     }
+*/
   }
 
   _dropHandler(e) {
@@ -146,6 +161,13 @@ class StyleImportDialog extends LitElement {
   }
 
   _reportError(region, description) {
+    const event = new CustomEvent('error', {
+      detail: description,
+      bubbles: true,
+      composed: true,
+    })
+    this.dispatchEvent(event)
+
     const error = {
       region,
       description,
@@ -162,10 +184,39 @@ class StyleImportDialog extends LitElement {
         error,
       ]
     } else {
-      console.log(`Error already reported`)
+      console.log("Error already reported")
     }
 
     console.log(this._validationErrors)
+  }
+
+  _onDragEnter(e) {
+    // Make sure the drag events do not trigger any inherent browser functionalities
+    e.preventDefault()
+    e.stopPropagation()
+
+    console.log("onDrop")
+  }
+  _onDragOver(e) {
+    // Make sure the drag events do not trigger any inherent browser functionalities
+    e.preventDefault()
+    e.stopPropagation()
+
+    console.log("onDragOver")
+  }
+  _onDragLeave(e) {
+    // Make sure the drag events do not trigger any inherent browser functionalities
+    e.preventDefault()
+    e.stopPropagation()
+
+    console.log("onDragLeave")
+  }
+  _onDrop(e) {
+    // Make sure the drag events do not trigger any inherent browser functionalities
+    e.preventDefault()
+    e.stopPropagation()
+
+    console.log("onDrop")
   }
 
   get _hasUrlInputError() {
@@ -230,38 +281,33 @@ class StyleImportDialog extends LitElement {
                   <fieldset style="height: ${dialogFieldsetHeight}px;">
                     <legend>Format</legend>
                     <nav class="vertical">
-                      <label class="radio" @click="${() => this._selectedFormat = 'eodash'}">
-                        <input type="radio" name="format" />
-                        <span>Eodash Style</span>
+                      <label class="radio" @click="${() => this._selectedFormat = 'eodash_openlayers'}">
+                        <input type="radio" name="format" checked />
+                        <span><b>Eodash / OpenLayers flat style</b></span>
                       </label>
 
-                      <label class="radio" @click="${() => this._selectedFormat = 'openlayers'}">
+                      <label class="radio" @click="${() => this._selectedFormat = 'mapbox'}">
                         <input type="radio" name="format" />
-                        <span>OpenLayers Flat Style</span>
+                        <span><b>Mapbox</b></span>
                       </label>
 
                       <label class="radio" @click="${() => this._selectedFormat = 'sld'}">
                         <input type="radio" name="format" />
-                        <span>Styled Layer Descriptor (.sld)</span>
+                        <span><b>Styled Layer Descriptor</b></span>
                       </label>
                     </nav>
                   </fieldset>
                 </eox-layout-item>
+
                 <eox-layout-item
                   h="3" w="8" x="4" y="0"
                   style="padding-top: 10px;"
                 >
-                  <nav class="small">
-                    <button>
-                      <i>attach_file</i>
-                      <span>Upload file</span>
-                      <input type="file">
-                    </button>
+                  <nav class="small no-space" style="width: 100%;">
                     <div
                       class="field border prefix
-                        round small ${this._hasUrlInputError ? 'invalid' : ''}"
-                      style="width: calc(100% - 200px);"
-
+                        left-round small ${this._hasUrlInputError ? 'invalid' : ''}"
+                      style="width: calc(100% - 300px);"
                     >
                       <i>link</i>
                       <input
@@ -269,34 +315,47 @@ class StyleImportDialog extends LitElement {
                         placeholder="Paste a web address here to load from a website"
                         .value="${this._urlValue || ''}"
                         @input="${this._urlInputHandler}"
-                        style="width: 100%;"
                       />
-                      ${this._urlInputErrors
-                        .map(error =>
-                          html`<span
-                            class="error"
-                            style="display: ${this._hasUrlInputError ? 'flex' : 'none'}"
-                          >
-                            ${error.description}
-                          </span>`
-                        )
-                      }
                     </div>
 
-                    <!--<button
-                      class="right-round"
+                    <button
+                      class="right-round no-margin"
                       @click="${this._loadStyleFromUrl}"
                     >
                       ${
                         this._isUrlInputLoading
                           ? html`<progress class="circle small"></progress>`
-                          : html`Import from URL`
+                          : html`
+                            <i>download</i>
+                            <span>Load</span>
+                          `
                       }
-                    </button>-->
+                    </button>
                   </nav>
                 </eox-layout-item>
                 <eox-layout-item h="9" w="8" x="4" y="3">
                   <nav
+                    class="vertical"
+                    @drop="${(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      console.log('onDrop')
+                    }}"
+                    @dragenter="${(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      console.log('dragEnter')
+                    }}"
+                    @dragover="${(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      console.log('dragOver')
+                    }}"
+                    @dragleave="${(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      console.log('dragLeave')
+                    }}"
                     style="
                       width: 100%;
                       height: 100%;
@@ -310,8 +369,9 @@ class StyleImportDialog extends LitElement {
                       cursor: grab;
                     "
                   >
-                    <i class="large">upload</i>
-                    <h6>Drop a file into this zone to upload</h6>
+                    <i class="extra">folder</i>
+                    <h6>Drop files here</h6>
+                    <span style="margin-top: -10px;">or click to upload a local file</span>
                   </nav>
                 </eox-layout-item>
               </eox-layout>
