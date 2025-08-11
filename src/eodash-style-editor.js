@@ -517,6 +517,9 @@ export class EodashStyleEditor extends LitElement {
   }
 
   render() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const isStyleImportEnabled = urlParams.get("enableStyleImport");
+
     return html`
       <style>
         ${eoxUiStyle}
@@ -610,6 +613,7 @@ export class EodashStyleEditor extends LitElement {
         <style-editor-toolbar
           style="z-index: 3000"
           url="${this._url}"
+          enableStyleImport="${isStyleImportEnabled}"
           @importstyle="${() => (this._isStyleImporterVisible = true)}"
           @submit="${(event) => {
             this._url = event.detail.uri;
