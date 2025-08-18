@@ -491,7 +491,7 @@ export class EodashStyleEditor extends LitElement {
         view.setZoom(currentZoom);
         view.setRotation(currentRotation);
       }
-    }, 10);
+    }, 1);
   }
 
   async onEditorInput(e) {
