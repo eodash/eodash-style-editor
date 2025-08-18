@@ -210,6 +210,9 @@ export class EodashStyleEditor extends LitElement {
     this._isLayerControlVisible = false;
     this._isStyleImporterVisible = false;
 
+    this._currentMapView = null; // Store current view state
+    this._shouldApplyZoomExtent = true; // Only true on initial load
+
     this._style = {
       "stroke-color": "red",
       radius: 5,
@@ -259,6 +262,8 @@ export class EodashStyleEditor extends LitElement {
     _currentError: { state: true },
     // Duration in milliseconds until a spawned snackbar notification fades away.
     _snackbarDuration: { state: true },
+    _currentMapView: { state: true },
+    _shouldApplyZoomExtent: { state: true },
   };
 
   // Error handling remains the same
@@ -410,35 +415,83 @@ export class EodashStyleEditor extends LitElement {
 
   _updateLayerStyles() {
     console.log("updating styles");
+
     if (!this._mapLayers) return;
-
     const eoxMap = this.renderRoot.querySelector("eox-map");
-    //const layerConfig = this.renderRoot.querySelector('eox-layercontrol')
+    if (!eoxMap || !eoxMap.map) return;
 
-    console.log(eoxMap.map.getLayers().getArray());
+    // Save current view state
+    const view = eoxMap.map.getView();
+    const currentCenter = view.getCenter();
+    const currentZoom = view.getZoom();
+    const currentRotation = view.getRotation();
 
-    // Create a new array with updated styles but same layer references
+    console.log("Saving view state:", { currentCenter, currentZoom });
+
+    // DEBUG
+    //console.log(eoxMap.map.getLayers().getArray());
+
     const newLayers = this._mapLayers.map((layer) => {
-      const updatedStyle = updateVectorLayerStyle(this._style);
+      // Handle Vector layers
       if (layer.type === "Vector") {
+        const updatedStyle = updateVectorLayerStyle(this._style);
         const olLayer = eoxMap.map
           .getLayers()
           .getArray()
           .find((l) => l.get("id") === layer.properties.id);
         if (olLayer) {
-          console.log("Updating style for layer");
+          console.log("Updating style for Vector layer");
           olLayer.setStyle(updatedStyle);
         }
-      }
-      if (layer.type === "Vector" || layer.type === "WebGLTile") {
         return {
           ...layer,
           style: updatedStyle,
         };
       }
+
+      // Handle WebGLTile layers (GeoTIFF)
+      if (layer.type === "WebGLTile") {
+        const olLayer = eoxMap.map
+          .getLayers()
+          .getArray()
+          .find((l) => l.get("id") === layer.properties.id);
+
+        if (olLayer) {
+          console.log("Updating style for WebGLTile layer");
+
+          // Check if we have variables to update
+          if (
+            this._style.variables &&
+            Object.keys(this._style.variables).length > 0
+          ) {
+            // Use updateStyleVariables for efficient updates
+            olLayer.updateStyleVariables(this._style.variables);
+          } else {
+            // For complete style changes, use setStyle (more expensive)
+            olLayer.setStyle(this._style);
+          }
+        }
+
+        return {
+          ...layer,
+          style: this._style, // Don't use updateVectorLayerStyle for WebGL
+        };
+      }
+
       return layer;
     });
-    this._mapLayers = [...newLayers]; // Trigger Lit update with new array reference
+
+    //this._mapLayers = [...newLayers];
+
+    // Restore view state after a microtask to ensure DOM updates have processed
+    /*Promise.resolve().then*/ window.setTimeout(() => {
+      if (currentCenter && currentZoom) {
+        console.log("Restoring view state:", { currentCenter, currentZoom });
+        view.setCenter(currentCenter);
+        view.setZoom(currentZoom);
+        view.setRotation(currentRotation);
+      }
+    }, 1);
   }
 
   async onEditorInput(e) {
@@ -466,7 +519,8 @@ export class EodashStyleEditor extends LitElement {
 
     if (parseResult !== false) {
       this._style = parseResult;
-      await this._buildMapLayers({ shouldBoundsUpdate: true });
+      //await this._buildMapLayers({ shouldBoundsUpdate: true });
+      this._updateLayerStyles();
     }
   }
 
@@ -480,7 +534,10 @@ export class EodashStyleEditor extends LitElement {
       this._buildMapLayers({ shouldBoundsUpdate: true });
       this._isInitialized = true;
 
-      styleConvertExample();
+      // Setup map view listener after a delay to ensure map is ready
+      setTimeout(() => {
+        this._setupMapViewListener();
+      }, 200);
     }
 
     window.setTimeout(() => {
@@ -496,6 +553,37 @@ export class EodashStyleEditor extends LitElement {
         ]["ace_editor_instance"].textInput.getElement()
         .addEventListener("keyup", this.#debouncedEditorFn);
     }, 100);
+  }
+
+  _setupMapViewListener() {
+    const eoxMap = this.renderRoot.querySelector("eox-map");
+    if (!eoxMap || !eoxMap.map) {
+      // Retry if map not ready
+      setTimeout(() => this._setupMapViewListener(), 100);
+      return;
+    }
+
+    const view = eoxMap.map.getView();
+
+    // Listen to view changes and store them
+    view.on("change:center", () => {
+      this._currentMapView = {
+        center: view.getCenter(),
+        zoom: view.getZoom(),
+        rotation: view.getRotation(),
+      };
+      // After first user interaction, don't apply zoomExtent anymore
+      this._shouldApplyZoomExtent = false;
+    });
+
+    view.on("change:resolution", () => {
+      this._currentMapView = {
+        center: view.getCenter(),
+        zoom: view.getZoom(),
+        rotation: view.getRotation(),
+      };
+      this._shouldApplyZoomExtent = false;
+    });
   }
 
   // Temporary function until I move the layer control box to a separate element.
@@ -602,7 +690,9 @@ export class EodashStyleEditor extends LitElement {
           : html`<eox-map
               id="map"
               .layers="${this._mapLayers}"
-              .zoomExtent="${this._mapZoomExtent}"
+              .zoomExtent="${this._shouldApplyZoomExtent
+                ? this._mapZoomExtent
+                : undefined}"
               style="width: 100%; height: 100%;"
             >
               <eox-map-tooltip
