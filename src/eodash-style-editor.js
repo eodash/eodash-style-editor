@@ -111,6 +111,7 @@ function createGeoTiffConfig(url) {
       },
       source: {
         type: "GeoTIFF",
+        normalize: false,
         sources: [
           {
             url: url,

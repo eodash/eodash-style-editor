@@ -33,7 +33,7 @@
   {
     "name": "Crop Circles COG",
     "uri": "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/36/Q/WD/2020/7/S2A_36QWD_20200701_0_L2A/TCI.tif",
-    "style": {"color":["case",[">",["band",1],0],["array",["*",["band",1],0.4],["*",["band",2],1],["*",["band",3],1],1],["color",0,0,0,0]]}
+    "style": {"color":["case",[">",["band",1],0],["array",["/",["band",1],400],["/",["band",2],500],["/",["band",3],500],1],["color",0,0,0,0]]}
   },
   {
     "name": "Polar Ice FGB",
