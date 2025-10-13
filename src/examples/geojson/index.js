@@ -4,8 +4,7 @@ export default {
   id: 'africa',
   name: 'Countries of Africa',
   format: 'geojson',
-  dataUrl:
-    'https://gist.github.com/1310aditya/35b939f63d9bf7fbafb0ab28eb878388/raw/96b48425262b64764254745393ba63456fe3135d/africa.json',
+  dataUrl: '/eodash-style-editor/data/geojson/africa.json',
   style,
   layers: [
     {
@@ -17,7 +16,7 @@ export default {
       source: {
         type: 'Vector',
         format: 'GeoJSON',
-        url: 'https://gist.github.com/1310aditya/35b939f63d9bf7fbafb0ab28eb878388/raw/96b48425262b64764254745393ba63456fe3135d/africa.json',
+        url: '/eodash-style-editor/data/geojson/africa.json',
       },
       style,
       interactions: [
