@@ -1,7 +1,35 @@
-# eodash-style-editor
+# vue-style-editor
 
-`eodash-style-editor` is a tiny web-based IDE (integrated development environment) for OpenLayers styles that updates in real-time when the style definition is changed.
+This template should help get you started developing with Vue 3 in Vite.
 
-# Links
+## Recommended IDE Setup
 
-* [`flatgeobuf` NPM usage reference](https://github.com/flatgeobuf/flatgeobuf/tree/master/examples/node)
+[VSCode](https://code.visualstudio.com/) + [Volar](https://marketplace.visualstudio.com/items?itemName=Vue.volar) (and disable Vetur).
+
+## Customize configuration
+
+See [Vite Configuration Reference](https://vite.dev/config/).
+
+## Project Setup
+
+```sh
+npm install
+```
+
+### Compile and Hot-Reload for Development
+
+```sh
+npm run dev
+```
+
+### Compile and Minify for Production
+
+```sh
+npm run build
+```
+
+### Lint with [ESLint](https://eslint.org/)
+
+```sh
+npm run lint
+```

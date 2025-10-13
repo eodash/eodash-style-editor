@@ -1,0 +1,19 @@
+{
+  "variables": {
+    "band1Divisor": 1.0,
+    "band2Divisor": 1.0,
+    "band3Divisor": 1.0
+  },
+  "color": [
+    "case",
+    [">", ["band", 1], 0],
+    [
+      "array",
+      ["/", ["band", 1], ["var", "band1Divisor"]],
+      ["/", ["band", 2], ["var", "band2Divisor"]],
+      ["/", ["band", 3], ["var", "band3Divisor"]],
+      1
+    ],
+    ["color", 0, 0, 0, 0]
+  ]
+}

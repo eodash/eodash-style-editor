@@ -1,0 +1,22 @@
+{
+  "variables": {
+    "strokeWidth": 2
+  },
+  "fill-color": "transparent",
+  "stroke-color": "teal",
+  "stroke-width": ["var", "strokeWidth"],
+  "jsonform": {
+    "type": "object",
+    "title": "Data configuration",
+    "properties": {
+      "strokeWidth": {
+        "type": "number",
+        "minimum": 0,
+        "maximum": 10,
+        "format": "range",
+        "default": 0
+      }
+    }
+  },
+  "tooltip": [{ "id": "name", "title": "Country" }]
+}
