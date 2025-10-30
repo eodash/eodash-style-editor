@@ -126,7 +126,7 @@ import { validateDataUrl, detectDataFormat } from '../utils/layerGenerator.js'
 const isDropdownOpen = ref(false)
 const dropdownButtonRef = ref(null)
 const dropdownPosition = ref({})
-const { setCurrentExample, currentExample, dataLayers, currentExampleStyle, clearCurrentExample, setCustomDataLayers } = useExamples()
+const { setCurrentExample, currentExample, dataLayers, currentExampleStyle, clearCurrentExample, setCustomDataLayers, updateCurrentStyle } = useExamples()
 
 // URL input mode state
 const isUrlInputMode = ref(false)
@@ -235,6 +235,29 @@ const loadUrlData = async () => {
         'fill-color': 'rgba(0, 123, 255, 0.2)'
       } : undefined
     }
+
+    // Load the appropriate example style based on format
+    // This ensures the editor shows the correct style for the data type
+    const exampleForFormat = examples.find(ex => {
+      if (format === 'GeoTIFF') {
+        return ex.format === 'geotiff'
+      } else if (format === 'FlatGeobuf') {
+        return ex.format === 'flatgeobuf'
+      } else {
+        // Default to GeoJSON example for other vector formats
+        return ex.format === 'geojson'
+      }
+    })
+
+    // Set the example style if found, otherwise use default
+    const styleToUse = exampleForFormat?.style || {
+      'fill-color': 'rgba(0, 123, 255, 0.2)',
+      'stroke-color': '#007bff',
+      'stroke-width': 2
+    }
+
+    // Update the current style before loading layers
+    updateCurrentStyle(styleToUse)
 
     // Use the new setCustomDataLayers function to handle the layer
     // MapView will add OSM base layer automatically
@@ -345,6 +368,29 @@ const autoSelectFromURL = async () => {
           'fill-color': 'rgba(0, 123, 255, 0.2)'
         } : undefined
       }
+
+      // Load the appropriate example style based on format
+      // This ensures the editor shows the correct style for the data type
+      const exampleForFormat = examples.find(ex => {
+        if (format === 'GeoTIFF') {
+          return ex.format === 'geotiff'
+        } else if (format === 'FlatGeobuf') {
+          return ex.format === 'flatgeobuf'
+        } else {
+          // Default to GeoJSON example for other vector formats
+          return ex.format === 'geojson'
+        }
+      })
+
+      // Set the example style if found, otherwise use default
+      const styleToUse = exampleForFormat?.style || {
+        'fill-color': 'rgba(0, 123, 255, 0.2)',
+        'stroke-color': '#007bff',
+        'stroke-width': 2
+      }
+
+      // Update the current style before loading layers
+      updateCurrentStyle(styleToUse)
 
       // Load the custom data layer
       await setCustomDataLayers([newLayer])
