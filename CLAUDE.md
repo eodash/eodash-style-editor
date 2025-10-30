@@ -78,11 +78,13 @@ Examples are organized in `src/examples/`:
 **Format Handlers:**
 - `FormatHandler` - Base prototype with `processLayer()` and `supports()` methods
 - `FlatGeoBufHandler` - Specialized handler that calculates FGB extents using `getFgbExtent()`
+- `GeoJSONHandler` - Handles GeoJSON extent calculation
+- `GeoTIFFHandler` - Handles GeoTIFF extent calculation
 - `DefaultHandler` - Fallback for unsupported formats
 
 **Key Functions:**
 - `processLayers(layers, editorStyle)` - Processes layers with format handlers and applies editor style
-- `getFormatHandler(sourceType)` - Returns appropriate handler for
+- `getFormatHandler(sourceType)` - Returns appropriate handler for format
 - `registerFormatHandler(sourceType, handler)` - Registers new format handlers
 
 **Benefits:**
@@ -92,7 +94,7 @@ Examples are organized in `src/examples/`:
 - Easy to extend for new data formats
 
 **FGB Processing Details:**
-- `getFgbExtent()` handles FlatGeoBuf deserialization correctly (iterates over features, not featureCollection.features)
+- `getFgbExtent()` handles FlatGeobuf deserialization correctly (iterates over features, not featureCollection.features)
 - Transforms coordinates from EPSG:4326 to EPSG:3857 for proper extent calculation
 - Robust error handling for malformed, empty, or inaccessible FGB data
 - Graceful fallback when extent calculation fails - layers still load without extent
@@ -111,7 +113,11 @@ Examples are organized in `src/examples/`:
 **Editor as Source of Truth:**
 - CodeEditor captures real-time changes via direct ACE editor access
 - `handleDirectAceChange()` parses JSON and calls `updateCurrentStyle()` on valid changes
-- `useExamples.updateCurrentStyle()` re-processes layers with new style
+- `useExamples.updateCurrentStyle()` **MUST always process from original example layers** (not already-processed layers)
+  - Original layers contain variable references like `["var", "strokeWidth"]`
+  - Already-processed layers have variables "burned in" (replaced with actual values)
+  - Processing from already-processed layers breaks variable updates
+  - Calculated extents should be preserved when reprocessing
 - Both new layer definitions and legacy layers receive editor style override
 
 **Bidirectional Synchronization:**
@@ -121,14 +127,20 @@ Examples are organized in `src/examples/`:
 
 **Style Update Sequence:**
 1. **Initial Load**: Example style → editor → layers (with format processing)
-2. **User Edit**: Editor change → JSON parse → `updateCurrentStyle()` → layer re-processing
+2. **User Edit**: Editor change → JSON parse → `updateCurrentStyle()` → layer re-processing from original layers
 3. **Layer Update**: Format handlers apply editor style override to all data layers
 4. **Map Refresh**: MapView computed property triggers with updated layers
 
 **Key Functions:**
 - `setCurrentExample(example)` - Loads example and applies editor style to layers
-- `updateCurrentStyle(newStyle)` - Re-processes all layers with new editor style
+- `updateCurrentStyle(newStyle)` - Re-processes all layers from **original example layers** with new editor style
 - `processLayers(layers, editorStyle)` - Applies editor style override during format processing
+
+**CRITICAL: Variable Processing:**
+- `updateVectorLayerStyle()` in `styleProcessor.js` replaces `["var", "key"]` expressions with actual values
+- This is a one-way operation - once replaced, variable references are lost
+- Therefore, `updateCurrentStyle()` MUST always start from `currentExample.value.layers` (not `dataLayers.value`)
+- Only calculated extents should be copied from processed layers to avoid re-fetching data
 
 ### ACE Editor Integration
 
@@ -227,13 +239,12 @@ Auto-formatting and ESLint fixes on save are enabled by default.
 2. Make minimal, testable changes
 3. Refine based on real behavior, not assumptions
 
-## Project-wide Guidelines
+## Common Debugging Issues
 
-- Search for information selectively to keep the context window small
-- Search relevant `eox-` prefixed dependencies to get more detailed information about how the general components work internally, if you hit a wall with the code within this repository
-- When debugging layout issues, remember that EditorToolbar and CodeEditor use fixed positioning and respond to `--sidebar-width` CSS variable changes
-- For ACE editor issues, use direct access pattern rather than trying to work through eox-jsonform events
-- Apply code folding immediately without delays to prevent visual glitches
+- **Variable updates not working**: Ensure `updateCurrentStyle()` processes from `currentExample.value.layers` (original layers with variable references), not `dataLayers.value` (processed layers with burned-in values)
+- **Layout issues**: Remember that EditorToolbar and CodeEditor use fixed positioning and respond to `--sidebar-width` CSS variable changes
+- **ACE editor issues**: Use direct access pattern rather than trying to work through eox-jsonform events
+- **Code folding glitches**: Apply folding immediately without delays to prevent visual artifacts
 
 ## Git Commit Guidelines
 
@@ -271,10 +282,3 @@ fix: resolve layer styling persistence during editing
 **Changed:**
 - Layer styling pipeline now processes variables before applying to map
 ```
-
-## Important Instructions
-
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless they're absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.

@@ -421,6 +421,8 @@ watch(
     // Detect if we need full recompilation or just variable updates
     let needsFullRecompilation = false
     let shouldCheckRecompilation = false
+    let hasVectorLayerStyleChange = false
+    const vectorLayersToUpdate = []
 
     if (lastLayerData && lastLayerData.length === newLayers.length) {
       console.log('[MapView] Checking if recompilation needed...')
@@ -437,11 +439,20 @@ watch(
             needsFullRecompilation = true
             break
           }
+        } else if (newLayer?.type === 'Vector' && oldLayer?.type === 'Vector') {
+          // Check if Vector layer style changed
+          const oldStyleStr = JSON.stringify(oldLayer.style)
+          const newStyleStr = JSON.stringify(newLayer.style)
+          if (oldStyleStr !== newStyleStr) {
+            console.log('[MapView] Vector layer style changed:', newLayer.id)
+            hasVectorLayerStyleChange = true
+            vectorLayersToUpdate.push(newLayer)
+          }
         }
       }
     }
 
-    console.log('[MapView] shouldCheckRecompilation:', shouldCheckRecompilation, 'needsFullRecompilation:', needsFullRecompilation)
+    console.log('[MapView] shouldCheckRecompilation:', shouldCheckRecompilation, 'needsFullRecompilation:', needsFullRecompilation, 'hasVectorLayerStyleChange:', hasVectorLayerStyleChange)
 
     if (needsFullRecompilation) {
       // Full layer recompilation path (shader changed)
@@ -477,6 +488,10 @@ watch(
           }
         }
       }
+    } else if (hasVectorLayerStyleChange) {
+      // Force layer update for Vector layer style changes
+      console.log('[MapView] Vector layer style changed, forcing layer update')
+      await updateMapLayers()
     } else {
       // Fast path: only update variables if shader hasn't changed
 

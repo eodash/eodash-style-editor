@@ -68,10 +68,15 @@ const handleGenericChange = (event) => {
       }
     }
 
+    console.log('[LayerControl] currentExampleStyle.value:', currentExampleStyle.value)
+    console.log('[LayerControl] updatedStyle:', updatedStyle)
+    console.log('[LayerControl] updatedStyle.variables:', updatedStyle.variables)
+    console.log('[LayerControl] updatedStyle["stroke-width"]:', updatedStyle['stroke-width'])
+
     // Update the current style which will propagate to all layers and the editor
     updateCurrentStyle(updatedStyle)
 
-    console.log('Style updated with new variables:', updatedStyle.variables)
+    console.log('[LayerControl] Style updated with new variables:', updatedStyle.variables)
 
     // Reset flag after a short delay
     setTimeout(() => {

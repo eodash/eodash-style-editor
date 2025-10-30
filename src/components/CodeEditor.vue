@@ -171,11 +171,22 @@ const setupAceEditor = async () => {
 }
 
 const handleDirectAceChange = () => {
-  if (!aceEditorInstance || isUpdatingFromExternal) return
+  if (!aceEditorInstance) {
+    console.log('[CodeEditor] handleDirectAceChange: no aceEditorInstance')
+    return
+  }
+
+  if (isUpdatingFromExternal) {
+    console.log('[CodeEditor] handleDirectAceChange: skipping (isUpdatingFromExternal=true)')
+    return
+  }
 
   try {
     const content = aceEditorInstance.getValue()
     const newStyle = JSON.parse(content)
+    console.log('[CodeEditor] handleDirectAceChange: parsed style:', newStyle)
+    console.log('[CodeEditor] handleDirectAceChange: has variables?', newStyle.variables)
+    console.log('[CodeEditor] handleDirectAceChange: stroke-width value:', newStyle['stroke-width'])
 
     // Use debounced update to prevent excessive calls
     debouncedStyleUpdate(newStyle)
@@ -225,12 +236,19 @@ const editorConfig = computed(() => {
 
 // Watch for external style changes (e.g., from LayerControl)
 watch(currentExampleStyle, (newStyle) => {
+  console.log('[CodeEditor] watch currentExampleStyle triggered with:', newStyle)
+  console.log('[CodeEditor] watch: has variables?', newStyle?.variables)
+  console.log('[CodeEditor] watch: stroke-width value:', newStyle?.['stroke-width'])
+
   if (aceEditorInstance && newStyle) {
     const currentContent = aceEditorInstance.getValue()
     const newContent = stringify(newStyle, { maxLength: 80 })
 
+    console.log('[CodeEditor] watch: newContent:', newContent)
+
     // Only update if content actually changed to avoid unnecessary updates
     if (currentContent !== newContent) {
+      console.log('[CodeEditor] watch: content changed, updating ACE editor')
       isUpdatingFromExternal = true
 
       // Preserve cursor position
@@ -250,8 +268,11 @@ watch(currentExampleStyle, (newStyle) => {
 
       // Re-enable internal updates after a brief delay
       setTimeout(() => {
+        console.log('[CodeEditor] watch: re-enabling internal updates')
         isUpdatingFromExternal = false
       }, 100)
+    } else {
+      console.log('[CodeEditor] watch: content unchanged, skipping update')
     }
   }
 })

@@ -68,17 +68,68 @@ if (example) {
   }
 
   const updateCurrentStyle = async (newStyle) => {
-    console.log('updateCurrentStyle called')
+    console.log('[useExamples] updateCurrentStyle called with:', newStyle)
+    console.log('[useExamples] currentExample:', currentExample.value)
+    console.log('[useExamples] dataLayers.value:', dataLayers.value)
     // Don't show loading indicator for style-only updates
     currentExampleStyle.value = newStyle
 
     // Re-process layers with the new style
     if (currentExample.value?.layers) {
-      // Use current dataLayers which have calculated extents, not original example layers
-      const layersWithExtents = dataLayers.value.length > 0 ? dataLayers.value : currentExample.value.layers
-// processLayers already handles style application correctly for all layer types
-      const processedLayers = await processLayers(layersWithExtents, newStyle)
+      // Always use original example layers to preserve variable references
+      // but copy over calculated extents from current dataLayers
+      const originalLayers = currentExample.value.layers
+      console.log('[useExamples] Original layers:', originalLayers)
+      const layersToProcess = originalLayers.map((layer, index) => {
+        const currentLayer = dataLayers.value[index]
+        if (currentLayer?.extent) {
+          return { ...layer, extent: currentLayer.extent }
+        }
+        return layer
+      })
+      console.log('[useExamples] Layers to process:', layersToProcess)
+
+      // processLayers already handles style application correctly for all layer types
+      const processedLayers = await processLayers(layersToProcess, newStyle)
+      console.log('[useExamples] Processed layers:', processedLayers)
       dataLayers.value = processedLayers
+      console.log('[useExamples] dataLayers.value updated')
+    } else if (dataLayers.value && dataLayers.value.length > 0) {
+      // Handle case where currentExample is null (e.g., custom URL data)
+      // In this case, we just update the style directly on existing layers
+      console.log('[useExamples] No currentExample, updating existing layers directly')
+      const updatedLayers = dataLayers.value.map((layer) => {
+        const updatedLayer = { ...layer }
+
+        if (layer.type === 'Vector') {
+          // For Vector layers, apply the new style directly
+          updatedLayer.style = newStyle
+
+          if (!updatedLayer.properties.layerConfig) {
+            updatedLayer.properties.layerConfig = {}
+          }
+
+          updatedLayer.properties.layerConfig = {
+            ...updatedLayer.properties.layerConfig,
+            style: newStyle
+          }
+        } else if (layer.type === 'WebGLTile') {
+          // For WebGLTile, keep the style
+          updatedLayer.style = newStyle
+
+          if (!updatedLayer.properties.layerConfig) {
+            updatedLayer.properties.layerConfig = {}
+          }
+
+          updatedLayer.properties.layerConfig = {
+            ...updatedLayer.properties.layerConfig,
+            style: newStyle
+          }
+        }
+        return updatedLayer
+      })
+      dataLayers.value = updatedLayers
+      console.log('[useExamples] Updated layers without example')
     } else if (currentExample.value) {
       // Update legacy layer style
       const updatedLayers = dataLayers.value.map((layer) => {
