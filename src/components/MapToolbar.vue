@@ -216,10 +216,17 @@ const loadUrlData = async () => {
         title: filename,
         visible: true
       },
-      source: {
-        type: format === 'GeoTIFF' ? 'GeoTIFF' : 'Vector',
+      source: format === 'GeoTIFF' ? {
+        type: 'GeoTIFF',
+        sources: [
+          {
+            url: urlInput.value
+          }
+        ]
+      } : {
+        type: 'Vector',
         url: urlInput.value,
-        format: format === 'GeoTIFF' ? undefined : format
+        format: format
       },
       // Add a basic style for vector layers
       style: format !== 'GeoTIFF' ? {
@@ -320,10 +327,17 @@ const autoSelectFromURL = async () => {
           title: filename,
           visible: true
         },
-        source: {
-          type: format === 'GeoTIFF' ? 'GeoTIFF' : 'Vector',
+        source: format === 'GeoTIFF' ? {
+          type: 'GeoTIFF',
+          sources: [
+            {
+              url: urlParam
+            }
+          ]
+        } : {
+          type: 'Vector',
           url: urlParam,
-          format: format === 'GeoTIFF' ? undefined : format
+          format: format
         },
         style: format !== 'GeoTIFF' ? {
           'stroke-color': '#007bff',
