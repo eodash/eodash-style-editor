@@ -96,40 +96,22 @@ if (example) {
       console.log('[useExamples] dataLayers.value updated')
     } else if (dataLayers.value && dataLayers.value.length > 0) {
       // Handle case where currentExample is null (e.g., custom URL data)
-      // In this case, we just update the style directly on existing layers
-      console.log('[useExamples] No currentExample, updating existing layers directly')
-      const updatedLayers = dataLayers.value.map((layer) => {
-        const updatedLayer = { ...layer }
+      // Reprocess layers through processLayers to ensure variables are handled correctly
+      console.log('[useExamples] No currentExample, reprocessing custom layers with new style')
 
-        if (layer.type === 'Vector') {
-          // For Vector layers, apply the new style directly
-          updatedLayer.style = newStyle
-
-          if (!updatedLayer.properties.layerConfig) {
-            updatedLayer.properties.layerConfig = {}
-          }
-
-          updatedLayer.properties.layerConfig = {
-            ...updatedLayer.properties.layerConfig,
-            style: newStyle
-          }
-        } else if (layer.type === 'WebGLTile') {
-          // For WebGLTile, keep the style
-          updatedLayer.style = newStyle
-
-          if (!updatedLayer.properties.layerConfig) {
-            updatedLayer.properties.layerConfig = {}
-          }
-
-          updatedLayer.properties.layerConfig = {
-            ...updatedLayer.properties.layerConfig,
-            style: newStyle
-          }
-        }
-        return updatedLayer
+      // Create "original" layers by stripping processed styles but keeping extents
+      const layersToProcess = dataLayers.value.map((layer) => {
+        const originalLayer = { ...layer }
+        // Remove processed style so processLayers applies the new style correctly
+        delete originalLayer.style
+        // Keep extent if it was calculated
+        return originalLayer
       })
-      dataLayers.value = updatedLayers
-      console.log('[useExamples] Updated layers without example')
+
+      // Reprocess through processLayers to handle variables correctly
+      const processedLayers = await processLayers(layersToProcess, newStyle)
+      dataLayers.value = processedLayers
+      console.log('[useExamples] Updated custom layers via processLayers')
     } else if (currentExample.value) {
       // Update legacy layer style
       const updatedLayers = dataLayers.value.map((layer) => {
