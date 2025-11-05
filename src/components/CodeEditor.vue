@@ -8,6 +8,10 @@
       :value="formValue"
       :style="{ visibility: isLoading ? 'hidden' : 'visible' }"
     ></eox-jsonform>
+    <div id="editor-toolbar">
+      <button class="small">Format</button>
+      <button class="small" @click="handleFold">Fold</button>
+    </div>
   </div>
 </template>
 
@@ -43,38 +47,6 @@ const debouncedStyleUpdate = debounce((newStyle) => {
   updateCurrentStyle(newStyle)
 }, 650)
 
-const collapseAllExcept = (exemptRange) => {
-  if (!aceEditorInstance) return
-
-  const session = aceEditorInstance.getSession()
-  const allFolds = session.getAllFolds()
-
-  allFolds.forEach((fold) => {
-    const foldKey = `${fold.start.row}-${fold.end.row}`
-    if (exemptRange && exemptRange === foldKey) {
-      return
-    }
-
-    if (activeFolds.value.has(foldKey)) {
-      activeFolds.value.delete(foldKey)
-    }
-  })
-
-  session.unfold()
-
-  setTimeout(() => {
-    initializeDefaultFolds()
-    if (exemptRange) {
-      const [startRow] = exemptRange.split('-').map(Number)
-      const range = session.getFoldWidgetRange(startRow)
-      if (range) {
-        session.removeFold(session.getFoldAt(startRow))
-        activeFolds.value.add(exemptRange)
-      }
-    }
-  }, 10)
-}
-
 const initializeDefaultFolds = () => {
   if (!aceEditorInstance) return
 
@@ -105,23 +77,14 @@ const initializeDefaultFolds = () => {
   }
 }
 
-const handleFoldChange = () => {
+const handleFold = () => {
   if (!aceEditorInstance) return
 
+  // Clear existing folds and re-apply default folding
   const session = aceEditorInstance.getSession()
-  const allFolds = session.getAllFolds()
-  const currentFoldKeys = new Set(allFolds.map((fold) => `${fold.start.row}-${fold.end.row}`))
-
-  const previouslyActive = new Set(activeFolds.value)
-  const newlyExpanded = [...previouslyActive].filter((key) => !currentFoldKeys.has(key))
-
-  if (newlyExpanded.length > 0) {
-    const expandedKey = newlyExpanded[0]
-
-    setTimeout(() => {
-      collapseAllExcept(expandedKey)
-    }, 10)
-  }
+  session.unfold()
+  activeFolds.value.clear()
+  initializeDefaultFolds()
 }
 
 const setupAceEditor = async () => {
@@ -141,9 +104,6 @@ const setupAceEditor = async () => {
 
         // Add direct change listener with debouncing
         aceEditor.on('change', handleDirectAceChange)
-
-        // Add fold change listener for auto-collapse functionality
-        aceEditor.getSession().on('changeFold', handleFoldChange)
 
         // Keep loader visible until folding is complete
 
@@ -191,6 +151,10 @@ const handleDirectAceChange = () => {
     // Use debounced update to prevent excessive calls
     debouncedStyleUpdate(newStyle)
   } catch (error) {
+    // Cancel any pending debounced updates when JSON is invalid
+    // This prevents old valid states from overwriting current editing
+    debouncedStyleUpdate.cancel()
+
     // Silently ignore JSON parse errors during editing
     // Only log if it's a different type of error
     if (!(error instanceof SyntaxError)) {
@@ -202,7 +166,6 @@ const handleDirectAceChange = () => {
 const cleanupAceEditor = () => {
   if (aceEditorInstance) {
     aceEditorInstance.off('change', handleDirectAceChange)
-    aceEditorInstance.getSession().off('changeFold', handleFoldChange)
     aceEditorInstance = null
   }
   // Clear active folds state
@@ -240,40 +203,50 @@ watch(currentExampleStyle, (newStyle) => {
   console.log('[CodeEditor] watch: has variables?', newStyle?.variables)
   console.log('[CodeEditor] watch: stroke-width value:', newStyle?.['stroke-width'])
 
-  if (aceEditorInstance && newStyle) {
-    const currentContent = aceEditorInstance.getValue()
-    const newContent = stringify(newStyle, { maxLength: 80 })
+  if (!aceEditorInstance || !newStyle) {
+    return
+  }
 
-    console.log('[CodeEditor] watch: newContent:', newContent)
+  // Don't update if user is actively editing - user edits have absolute priority
+  if (aceEditorInstance.isFocused()) {
+    console.log('[CodeEditor] watch: editor is focused, skipping update to prevent overwriting user input')
+    return
+  }
 
-    // Only update if content actually changed to avoid unnecessary updates
-    if (currentContent !== newContent) {
-      console.log('[CodeEditor] watch: content changed, updating ACE editor')
-      isUpdatingFromExternal = true
+  const currentContent = aceEditorInstance.getValue()
+  const newContent = stringify(newStyle, { maxLength: 80 })
 
-      // Preserve cursor position
-      const cursorPosition = aceEditorInstance.getCursorPosition()
+  console.log('[CodeEditor] watch: newContent:', newContent)
 
-      // Update the content
-      aceEditorInstance.setValue(newContent, -1) // -1 preserves cursor position
+  // Only update if content actually changed to avoid unnecessary updates
+  if (currentContent !== newContent) {
+    console.log('[CodeEditor] watch: content changed, updating ACE editor')
+    isUpdatingFromExternal = true
 
-      // Restore cursor position
-      aceEditorInstance.moveCursorToPosition(cursorPosition)
+    // Preserve cursor position and selection
+    const cursorPosition = aceEditorInstance.getCursorPosition()
+    const scrollTop = aceEditorInstance.getSession().getScrollTop()
 
-      // Clear undo history to prevent confusion
-      aceEditorInstance.getSession().getUndoManager().reset()
+    // Update the content
+    aceEditorInstance.setValue(newContent, -1) // -1 moves cursor to start
 
-      // Re-apply default folds immediately after content update
-      initializeDefaultFolds()
+    // Restore cursor position and scroll
+    aceEditorInstance.moveCursorToPosition(cursorPosition)
+    aceEditorInstance.getSession().setScrollTop(scrollTop)
 
-      // Re-enable internal updates after a brief delay
-      setTimeout(() => {
-        console.log('[CodeEditor] watch: re-enabling internal updates')
-        isUpdatingFromExternal = false
-      }, 100)
-    } else {
-      console.log('[CodeEditor] watch: content unchanged, skipping update')
-    }
+    // Clear undo history to prevent confusion
+    aceEditorInstance.getSession().getUndoManager().reset()
+
+    // Re-apply default folds immediately after content update
+    initializeDefaultFolds()
+
+    // Re-enable internal updates after a brief delay
+    setTimeout(() => {
+      console.log('[CodeEditor] watch: re-enabling internal updates')
+      isUpdatingFromExternal = false
+    }, 100)
+  } else {
+    console.log('[CodeEditor] watch: content unchanged, skipping update')
   }
 })
 
@@ -334,7 +307,7 @@ const editorSchema = computed(() => ({
 <style scoped>
 .code-editor-container {
   position: fixed;
-  top: -40px;
+  top: 0; /* -40px for top */
   left: 0;
   width: calc(var(--sidebar-width, 300px) - 12px);
   height: calc(100vh + 40px);
@@ -394,4 +367,25 @@ const editorSchema = computed(() => ({
 }
 
 /* No padding - toolbar overlays content */
+
+#editor-toolbar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  height: 40px;
+  width: calc(var(--sidebar-width, 300px) - 12px);
+  display: flex;
+  align-items: center;
+  justify-content: start;
+  padding: 0 8px;
+  gap: 8px;
+  background: white;
+  z-index: 1000;
+}
+
+@media (prefers-color-scheme: dark) {
+  #editor-toolbar {
+    background: #1e1e1e;
+  }
+}
 </style>
