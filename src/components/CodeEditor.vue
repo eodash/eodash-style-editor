@@ -8,8 +8,8 @@
       :value="formValue"
       :style="{ visibility: isLoading ? 'hidden' : 'visible' }"
     ></eox-jsonform>
-    <div id="editor-toolbar">
-      <button class="small">Format</button>
+    <div class="editor-toolbar">
+      <button class="small" @click="handleFormat">Format</button>
       <button class="small" @click="handleFold">Fold</button>
     </div>
   </div>
@@ -77,6 +77,30 @@ const initializeDefaultFolds = () => {
   }
 }
 
+const handleFormat = () => {
+  if (!aceEditorInstance) return
+
+  try {
+    const content = aceEditorInstance.getValue()
+    const parsed = JSON.parse(content)
+    const formatted = stringify(parsed, { maxLength: 80 })
+
+    // Preserve cursor and scroll position
+    const cursorPosition = aceEditorInstance.getCursorPosition()
+    const scrollTop = aceEditorInstance.getSession().getScrollTop()
+
+    aceEditorInstance.setValue(formatted, -1)
+    aceEditorInstance.moveCursorToPosition(cursorPosition)
+    aceEditorInstance.getSession().setScrollTop(scrollTop)
+
+    // Re-apply default folds
+    initializeDefaultFolds()
+  } catch (error) {
+    // Silently ignore if JSON is invalid
+    console.warn('Cannot format invalid JSON')
+  }
+}
+
 const handleFold = () => {
   if (!aceEditorInstance) return
 
@@ -113,6 +137,7 @@ const setupAceEditor = async () => {
           foldStyle: 'markbeginend',
           enableBasicAutocompletion: true,
           enableLiveAutocompletion: true,
+          behavioursEnabled: false, // Disable smart behaviors that auto-format spacing
         })
 
         // Apply initial folding immediately
@@ -194,6 +219,7 @@ const editorConfig = computed(() => {
     foldStyle: 'markbeginend',
     enableBasicAutocompletion: true,
     enableLiveAutocompletion: true,
+    behavioursEnabled: false, // Disable smart behaviors that auto-format spacing
   }
 })
 
@@ -368,7 +394,7 @@ const editorSchema = computed(() => ({
 
 /* No padding - toolbar overlays content */
 
-#editor-toolbar {
+.editor-toolbar {
   position: fixed;
   left: 0;
   top: 0;
@@ -376,7 +402,7 @@ const editorSchema = computed(() => ({
   width: calc(var(--sidebar-width, 300px) - 12px);
   display: flex;
   align-items: center;
-  justify-content: start;
+  justify-content: space-around;
   padding: 0 8px;
   gap: 8px;
   background: white;
@@ -384,7 +410,7 @@ const editorSchema = computed(() => ({
 }
 
 @media (prefers-color-scheme: dark) {
-  #editor-toolbar {
+  .editor-toolbar {
     background: #1e1e1e;
   }
 }
