@@ -263,8 +263,7 @@ watch(currentExampleStyle, (newStyle) => {
     // Clear undo history to prevent confusion
     aceEditorInstance.getSession().getUndoManager().reset()
 
-    // Re-apply default folds immediately after content update
-    initializeDefaultFolds()
+    // Don't re-apply folds on external updates - preserve user's fold state
 
     // Re-enable internal updates after a brief delay
     setTimeout(() => {

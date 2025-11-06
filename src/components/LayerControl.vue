@@ -1,5 +1,6 @@
 <template>
   <eox-layercontrol
+    v-if="isLayerControlVisible"
     ref="layerControlRef"
     idProperty="id"
     titleProperty="title"
@@ -17,6 +18,14 @@ const layerControlRef = ref(null)
 const { currentExampleStyle, updateCurrentStyle, dataLayers } = useExamples()
 let isUpdatingFromLayerControl = false
 let isMounted = true
+const isLayerControlVisible = ref(true)
+let mapRef = null // Store map reference for reconnection
+
+// Store previous style to detect schema changes
+const previousStyleState = ref({
+  variables: null,
+  jsonform: null
+})
 
 // Clean up on unmount
 onUnmounted(() => {
@@ -89,50 +98,67 @@ const handleGenericChange = (event) => {
 }
 
 // Watch for style changes from the editor
-watch(currentExampleStyle, async (newStyle, oldStyle) => {
+watch(currentExampleStyle, async (newStyle) => {
   // Skip if the change came from the layer control itself
   if (isUpdatingFromLayerControl) return
+  if (!newStyle) return
 
-  // Skip if no layer control ref
-  if (!layerControlRef.value) return
-
-  // Skip if the entire style hasn't actually changed (prevent infinite loops)
-  // This compares the full style object, not just variables
-  const newStyleStr = JSON.stringify(newStyle || {})
-  const oldStyleStr = JSON.stringify(oldStyle || {})
-  if (newStyleStr === oldStyleStr) {
+  // Initialize previous state on first load
+  if (previousStyleState.value.variables === null && previousStyleState.value.jsonform === null) {
+    previousStyleState.value = {
+      variables: newStyle.variables ? JSON.parse(JSON.stringify(newStyle.variables)) : null,
+      jsonform: newStyle.jsonform ? JSON.parse(JSON.stringify(newStyle.jsonform)) : null
+    }
     return
   }
 
-  console.log('Style changed from editor, variables:', newStyle?.variables)
+  // Check if jsonform (schema) changed - only recreate for schema changes
+  const schemaChanged = JSON.stringify(newStyle.jsonform) !== JSON.stringify(previousStyleState.value.jsonform)
 
-  // Give the layers time to update first
-  await nextTick()
+  if (schemaChanged) {
+    // Update previous state
+    previousStyleState.value = {
+      variables: newStyle.variables ? JSON.parse(JSON.stringify(newStyle.variables)) : null,
+      jsonform: newStyle.jsonform ? JSON.parse(JSON.stringify(newStyle.jsonform)) : null
+    }
 
-  // Force the layer control to update with the new data
-  // The requestUpdate() method is a Lit lifecycle method that forces a re-render
-  if (isMounted && layerControlRef.value?.requestUpdate) {
-    layerControlRef.value.requestUpdate()
-    console.log('Triggered layer control update')
+    // Wait for map layers to update first
+    await nextTick()
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    // Remove and re-add layer control to force fresh instance
+    isLayerControlVisible.value = false
+    await nextTick()
+
+    isLayerControlVisible.value = true
+  } else {
+    // For variable-only changes, just update the previous state
+    previousStyleState.value.variables = newStyle.variables ? JSON.parse(JSON.stringify(newStyle.variables)) : null
+
+    // Force layer control to refresh without destroying it
+    await nextTick()
+    if (layerControlRef.value?.requestUpdate) {
+      layerControlRef.value.requestUpdate()
+    }
   }
 })
 
-// Watch for layer changes and force update if needed
-watch(dataLayers, async (newLayers) => {
-  // Skip if the change came from the layer control itself
-  if (isUpdatingFromLayerControl) return
-
-  console.log('Layers updated with new config')
-
-  // Wait for DOM updates
-  await nextTick()
-
-  // Force layer control to re-read the layer configuration
-  if (isMounted && layerControlRef.value?.requestUpdate) {
-    layerControlRef.value.requestUpdate()
-    console.log('Forced layer control refresh after layer update')
+// Reconnect layer control when it becomes visible again after rebuild
+watch(isLayerControlVisible, async (visible) => {
+  if (visible && mapRef) {
+    await nextTick()
+    if (layerControlRef.value) {
+      layerControlRef.value.for = mapRef
+    }
   }
-}, { deep: true })
+})
+
+// Watch layerControlRef to store the map reference for reconnections
+watch(layerControlRef, (newRef) => {
+  if (newRef?.for && !mapRef) {
+    mapRef = newRef.for
+  }
+})
 
 defineExpose({ layerControlRef })
 </script>
