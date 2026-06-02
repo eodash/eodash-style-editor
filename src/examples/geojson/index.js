@@ -16,7 +16,7 @@ export default {
       source: {
         type: 'Vector',
         format: 'GeoJSON',
-        url: '/eodash-style-editor/data/geojson/africa.json',
+        url: 'data/geojson/africa.json',
       },
       style,
       interactions: [
