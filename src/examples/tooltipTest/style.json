@@ -1,0 +1,21 @@
+{
+  "stroke-color": "blue",
+  "stroke-width": 2,
+  "fill-color": [140, 200, 255, 0.5],
+  "tooltip": [
+    {
+      "id": "name",
+      "title": "Name"
+    },
+    {
+      "id": "population",
+      "title": "Population",
+      "appendix": "people"
+    },
+    {
+      "id": "area",
+      "title": "Area",
+      "appendix": "km²"
+    }
+  ]
+}
